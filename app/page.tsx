@@ -28,7 +28,7 @@ export default async function HomePage() {
 
             {/* 左側：轉角二站 + 測試區 + 維修排程 + 週排程 */}
             <div className="w-72 flex-shrink-0 flex flex-col gap-2 p-2 overflow-y-auto border-r border-slate-700">
-              <StorageArea location="zhuanjiaoer" label="轉角二站 儲車區" maxSlots={40} />
+              <StorageArea location="zhuanjiaoer" label="轉角二站 儲車區" maxSlots={40} collapsible />
               <div className="border-t border-slate-700 pt-2">
                 <TestAreaPanel />
               </div>
