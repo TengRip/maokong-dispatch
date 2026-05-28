@@ -1,7 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { DndContext, DragEndEvent, DragOverlay, useSensor, useSensors, PointerSensor } from '@dnd-kit/core'
+import {
+  DndContext, DragEndEvent, DragOverlay,
+  useSensor, useSensors, PointerSensor,
+  closestCenter,
+} from '@dnd-kit/core'
 import { useApp } from '@/lib/store'
 import { CarTag } from './CarTag'
 
@@ -14,14 +18,15 @@ interface PendingMove {
 }
 
 export function DragHandler({ children }: { children: React.ReactNode }) {
-  const { cars, maintenanceUnits, updateMainLinePosition, moveCar, logOperation, userRole } = useApp()
+  const { cars, mainLine, maintenanceUnits, updateMainLinePosition, moveCar, logOperation, userRole } = useApp()
   const isAdmin = userRole === 'admin'
   const [activeCarId, setActiveCarId] = useState<string | null>(null)
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null)
   const maintenanceCarIds = new Set(maintenanceUnits.flatMap(u => u.car_ids))
 
+  // 較低啟動距離，讓拖曳更靈敏
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
   )
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -40,13 +45,23 @@ export function DragHandler({ children }: { children: React.ReactNode }) {
     const dest = over.data.current
     if (!dest) return
 
-    const toLocation: string = dest.location
-    const toSlot: number | undefined = dest.slot
+    let toLocation: string = dest.location
+    let toSlot: number | undefined = dest.slot
 
-    // 報廢車：完全封鎖上正線
+    // 中央自動插入：找第一個空格
+    if (toLocation === 'main_line' && toSlot === -1) {
+      const firstEmpty = mainLine.positions.findIndex(p => p === null)
+      if (firstEmpty === -1) {
+        // 正線已滿，忽略
+        return
+      }
+      toSlot = firstEmpty
+    }
+
+    // 報廢車：強制封鎖上正線
     if (toLocation === 'main_line' && car.status === 'scrapped') return
 
-    // 維修需求或週排程車 → 上正線需警告
+    // 有維修需求 或 在週排程 → 上正線需警告
     const hasMaintenance = maintenanceCarIds.has(carId)
     const isInWeekly = car.location === 'weekly_schedule'
 
@@ -81,42 +96,35 @@ export function DragHandler({ children }: { children: React.ReactNode }) {
   return (
     <DndContext
       sensors={sensors}
+      collisionDetection={closestCenter}
       onDragStart={e => setActiveCarId(e.active.data.current?.carId ?? null)}
       onDragEnd={handleDragEnd}
     >
       {children}
 
       {/* 拖曳中的懸浮顯示 */}
-      <DragOverlay>
+      <DragOverlay dropAnimation={null}>
         {activeCarId ? <CarTag carId={activeCarId} draggableId="overlay" /> : null}
       </DragOverlay>
 
       {/* 上線警告 Modal */}
       {pendingMove && (
-        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
-          <div className="bg-white rounded-xl p-6 w-80 border border-orange-600 shadow-2xl">
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-80 border border-orange-300 shadow-2xl">
             <div className="text-orange-500 text-2xl text-center mb-3">⚠</div>
-            <h3 className="text-slate-900 font-bold text-center mb-3">上線警告</h3>
+            <h3 className="text-slate-800 font-bold text-center mb-3">上線警告</h3>
             <p className="text-slate-600 text-sm text-center mb-4">
               {pendingMove.reason}，請問是否確認上線？
             </p>
-            <div className="flex items-center gap-2 mb-4">
-              <span className="text-slate-400 text-sm">車號：</span>
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <span className="text-slate-500 text-sm">車號：</span>
               <CarTag carId={pendingMove.carId} />
             </div>
             <div className="flex gap-2">
-              <button
-                onClick={confirmPendingMove}
-                className="flex-1 bg-orange-600 hover:bg-orange-700 text-slate-900 rounded px-3 py-2 text-sm font-medium"
-              >
-                確認上線
-              </button>
-              <button
-                onClick={() => setPendingMove(null)}
-                className="flex-1 bg-slate-200 hover:bg-slate-500 text-slate-900 rounded px-3 py-2 text-sm"
-              >
-                取消
-              </button>
+              <button onClick={confirmPendingMove}
+                className="flex-1 bg-orange-500 hover:bg-orange-600 text-white rounded px-3 py-2 text-sm font-medium">確認上線</button>
+              <button onClick={() => setPendingMove(null)}
+                className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded px-3 py-2 text-sm">取消</button>
             </div>
           </div>
         </div>

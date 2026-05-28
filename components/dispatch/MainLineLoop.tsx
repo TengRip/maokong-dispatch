@@ -5,17 +5,20 @@ import { useDroppable } from '@dnd-kit/core'
 import { useApp } from '@/lib/store'
 import { CarTag } from './CarTag'
 
-// 各模式的格子分配
+const SW = 36   // 格子寬 px
+const SH = 30   // 格子高 px
+const GAP = 1   // 間距 px
+
 function getSegments(mode: 108 | 130) {
   return mode === 108
     ? { top: 30, right: 24, bottom: 30, left: 24 }
     : { top: 36, right: 29, bottom: 36, left: 29 }
 }
 
-// 每個格子的尺寸（px）
-const SW = 32   // 格子寬
-const SH = 24   // 格子高
-const GAP = 1   // 間距
+// 正確寬度：含兩個角落格子 + 上排所有格子 + 全部間距
+function calcLoopWidth(topCount: number) {
+  return (topCount + 2) * SW + (topCount + 1) * GAP
+}
 
 function LoopSlot({ index, carId }: { index: number; carId: string | null }) {
   const { isOver, setNodeRef } = useDroppable({
@@ -38,15 +41,14 @@ function LoopSlot({ index, carId }: { index: number; carId: string | null }) {
     <div
       ref={setNodeRef}
       onDoubleClick={() => { if (isAdmin) { setInputVal(carId ?? ''); setEditing(true) } }}
-      style={{ width: SW, height: SH, flexShrink: 0 }}
       className={`
         relative flex items-center justify-center rounded-sm border cursor-default select-none
-        ${isOver ? 'border-blue-400 bg-blue-100' : carId ? 'border-slate-400 bg-white' : 'border-slate-200 bg-slate-50'}
+        ${isOver ? 'border-blue-500 bg-blue-100' : carId ? 'border-slate-400 bg-white shadow-sm' : 'border-slate-200 bg-slate-50'}
       `}
+      style={{ width: SW, height: SH, flexShrink: 0 }}
     >
       {editing ? (
-        <input
-          autoFocus value={inputVal}
+        <input autoFocus value={inputVal}
           onChange={e => setInputVal(e.target.value)}
           onBlur={handleConfirm}
           onKeyDown={e => { if (e.key === 'Enter') handleConfirm(); if (e.key === 'Escape') setEditing(false) }}
@@ -56,8 +58,24 @@ function LoopSlot({ index, carId }: { index: number; carId: string | null }) {
       ) : carId ? (
         <CarTag carId={carId} draggableId={`ml_${index}_${carId}`} compact />
       ) : (
-        <span className="text-slate-300 text-[7px]">{index + 1}</span>
+        <span className="text-slate-200 text-[7px]">{index + 1}</span>
       )}
+    </div>
+  )
+}
+
+function Corner({ tl, tr, bl, br }: { tl?: boolean; tr?: boolean; bl?: boolean; br?: boolean }) {
+  const arrow = (tl || tr) ? '↑' : '↓'
+  const cls = [
+    'flex items-center justify-center border-2 border-slate-400',
+    tl ? 'rounded-tl-lg border-r-0 border-b-0' : '',
+    tr ? 'rounded-tr-lg border-l-0 border-b-0' : '',
+    bl ? 'rounded-bl-lg border-r-0 border-t-0' : '',
+    br ? 'rounded-br-lg border-l-0 border-t-0' : '',
+  ].join(' ')
+  return (
+    <div className={cls} style={{ width: SW, height: SH, flexShrink: 0 }}>
+      <span className="text-slate-300 text-[9px]">{arrow}</span>
     </div>
   )
 }
@@ -67,9 +85,7 @@ export function MainLineLoop() {
   const { mode, positions } = mainLine
   const seg = getSegments(mode)
   const isAdmin = userRole === 'admin'
-
-  // 計算固定寬度（由上排格子數決定）
-  const loopWidth = seg.top * (SW + GAP) - GAP
+  const loopWidth = calcLoopWidth(seg.top)
 
   const topIdx    = Array.from({ length: seg.top }, (_, i) => i)
   const rightIdx  = Array.from({ length: seg.right }, (_, i) => seg.top + i)
@@ -79,14 +95,20 @@ export function MainLineLoop() {
   const getSlotCar = (i: number) => positions[i] ?? null
   const filled = positions.filter(Boolean).length
 
+  // 中央大面積拖放目標（自動插入第一個空格）
+  const { isOver: isCenterOver, setNodeRef: centerRef } = useDroppable({
+    id: 'main_line_auto',
+    data: { location: 'main_line', slot: -1 },
+  })
+
   const [showExtract, setShowExtract] = useState(false)
   const [extractStart, setExtractStart] = useState('')
   const [extractErr, setExtractErr] = useState('')
 
   const handleModeSwitch = async (newMode: 108 | 130) => {
     if (!isAdmin || newMode === mode) return
-    if (newMode === 130) { await updateMainLineMode(130) }
-    else { setShowExtract(true) }
+    if (newMode === 130) await updateMainLineMode(130)
+    else setShowExtract(true)
   }
 
   const handleExtractConfirm = async () => {
@@ -97,8 +119,12 @@ export function MainLineLoop() {
     await extractCarsFrom130To108(cid)
   }
 
+  // 側邊欄高度（不含 paddingTop）
+  const sideSlotH = seg.right * (SH + GAP) - GAP
+
   return (
     <div className="flex flex-col items-center gap-3 select-none">
+
       {/* 模式切換 */}
       <div className="flex items-center gap-3">
         <span className="text-slate-500 text-xs">正線模式：</span>
@@ -109,78 +135,74 @@ export function MainLineLoop() {
             >{m} 車</button>
           ))}
         </div>
-        <span className="text-slate-400 text-xs">已排 {filled} 台｜雙擊格子輸入車號</span>
+        <span className="text-slate-400 text-xs">已排 {filled} 台</span>
       </div>
 
-      {/* 矩形迴圈 — 固定寬度確保上下排與左右側對齊 */}
+      {/* 矩形迴圈 — loopWidth 確保三排完全對齊 */}
       <div style={{ width: loopWidth }}>
 
-        {/* 上排：回程（貓空→轉角），由右往左顯示 */}
+        {/* 上排：回程（貓空→轉角），由右往左 */}
         <div className="flex items-center" style={{ gap: GAP }}>
-          <div style={{ width: SW, height: SH, flexShrink: 0 }}
-            className="flex items-end justify-center border-l-2 border-t-2 border-slate-400 rounded-tl-md">
-            <span className="text-slate-400 text-[8px] mb-0.5">↑</span>
-          </div>
-          <div className="flex flex-1" style={{ gap: GAP }}>
-            {[...topIdx].reverse().map(i => <LoopSlot key={i} index={i} carId={getSlotCar(i)} />)}
-          </div>
-          <div style={{ width: SW, height: SH, flexShrink: 0 }}
-            className="flex items-end justify-center border-r-2 border-t-2 border-slate-400 rounded-tr-md">
-            <span className="text-slate-400 text-[8px] mb-0.5">↑</span>
-          </div>
+          <Corner tl />
+          {[...topIdx].reverse().map(i => <LoopSlot key={i} index={i} carId={getSlotCar(i)} />)}
+          <Corner tr />
         </div>
 
-        {/* 中段：左側 + 中央說明 + 右側 */}
-        <div className="flex" style={{ gap: 0 }}>
-          {/* 左側：去程（轉角→貓空），由下往上 */}
-          <div className="flex flex-col border-l-2 border-slate-400" style={{ gap: GAP, paddingTop: GAP }}>
+        {/* 中段 */}
+        <div className="flex" style={{ height: sideSlotH + GAP }}>
+
+          {/* 左側：去程，由下往上 */}
+          <div className="flex flex-col border-l-2 border-slate-400"
+            style={{ width: SW, flexShrink: 0, paddingTop: GAP, gap: GAP }}>
             {[...leftIdx].reverse().map(i => <LoopSlot key={i} index={i} carId={getSlotCar(i)} />)}
           </div>
 
-          {/* 中央說明 */}
-          <div className="flex-1 flex flex-col items-center justify-center bg-slate-50/60 border-y border-slate-200/50">
+          {/* 中央大拖放目標 */}
+          <div ref={centerRef}
+            className="flex-1 flex flex-col items-center justify-center"
+            style={{
+              background: isCenterOver ? '#EFF6FF' : '#F8FAFC',
+              borderTop: 'none', borderBottom: 'none',
+              borderLeft: '1px solid #E2E8F0',
+              borderRight: '1px solid #E2E8F0',
+              transition: 'background 0.15s',
+            }}>
             <div className="text-center space-y-2">
-              <div className="flex items-center gap-2 text-blue-500 text-xs">
-                <span className="text-sm">↑</span><span>去程</span>
-              </div>
+              <div className="text-blue-500 text-xs font-medium">↑ 去程</div>
               <div className="text-slate-400 text-[10px] leading-5">
                 <div>轉角二站</div>
                 <div>⇅</div>
                 <div>貓空站</div>
               </div>
-              <div className="flex items-center gap-2 text-orange-500 text-xs">
-                <span>回程</span><span className="text-sm">↓</span>
-              </div>
+              <div className="text-orange-500 text-xs font-medium">回程 ↓</div>
+              {isCenterOver && (
+                <div className="text-blue-500 text-[10px] bg-blue-50 rounded px-2 py-0.5 border border-blue-200 mt-1">
+                  放開→插入第一空格
+                </div>
+              )}
             </div>
           </div>
 
-          {/* 右側：回程（貓空→轉角），由上往下 */}
-          <div className="flex flex-col border-r-2 border-slate-400" style={{ gap: GAP, paddingTop: GAP }}>
+          {/* 右側：回程，由上往下 */}
+          <div className="flex flex-col border-r-2 border-slate-400"
+            style={{ width: SW, flexShrink: 0, paddingTop: GAP, gap: GAP }}>
             {rightIdx.map(i => <LoopSlot key={i} index={i} carId={getSlotCar(i)} />)}
           </div>
         </div>
 
         {/* 下排：去程（轉角→貓空），由左往右 */}
         <div className="flex items-center" style={{ gap: GAP }}>
-          <div style={{ width: SW, height: SH, flexShrink: 0 }}
-            className="flex items-start justify-center border-l-2 border-b-2 border-slate-400 rounded-bl-md">
-            <span className="text-slate-400 text-[8px] mt-0.5">↓</span>
-          </div>
-          <div className="flex flex-1" style={{ gap: GAP }}>
-            {bottomIdx.map(i => <LoopSlot key={i} index={i} carId={getSlotCar(i)} />)}
-          </div>
-          <div style={{ width: SW, height: SH, flexShrink: 0 }}
-            className="flex items-start justify-center border-r-2 border-b-2 border-slate-400 rounded-br-md">
-            <span className="text-slate-400 text-[8px] mt-0.5">↓</span>
-          </div>
+          <Corner bl />
+          {bottomIdx.map(i => <LoopSlot key={i} index={i} carId={getSlotCar(i)} />)}
+          <Corner br />
         </div>
 
       </div>
 
       {/* 方向說明 */}
-      <div className="flex gap-6 text-[10px]">
-        <span className="text-blue-500">↑ 左側：去程（轉角二站→貓空站）</span>
-        <span className="text-orange-500">↓ 右側：回程（貓空站→轉角二站）</span>
+      <div className="flex gap-8 text-[10px]">
+        <span className="text-blue-500 font-medium">↑ 左側：去程（轉角二站→貓空站）</span>
+        <span className="text-orange-500 font-medium">↓ 右側：回程（貓空站→轉角二站）</span>
       </div>
 
       {/* 抽車 Modal */}

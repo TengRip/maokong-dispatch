@@ -232,7 +232,6 @@ function ColorsTab() {
               <input type="color" value={(colors as Record<string, string>)[key] || '#ffffff'}
                 onChange={e => { setSaved(false); setColors(p => ({ ...p, [key]: e.target.value })) }}
                 className="w-8 h-7 rounded cursor-pointer border border-slate-300" />
-              <span className="text-slate-400 text-[10px] w-16 font-mono">{(colors as Record<string, string>)[key]}</span>
             </div>
           </div>
         ))}
