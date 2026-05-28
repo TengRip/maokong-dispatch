@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useApp } from '@/lib/store'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
+import { SettingsPanel } from './SettingsPanel'
 
 export function TopBar() {
   const { userRole, userEmail, saveSnapshot, cars, maintenanceUnits } = useApp()
@@ -120,8 +121,9 @@ export function TopBar() {
         </div>
       )}
 
-      {/* 帳號資訊 */}
+      {/* 設定按鈕（admin 才有） + 帳號資訊 */}
       <div className="flex items-center gap-2 ml-2">
+        <SettingsPanel />
         <span className={`text-xs px-1.5 py-0.5 rounded ${isAdmin ? 'bg-blue-700 text-blue-200' : 'bg-slate-700 text-slate-400'}`}>
           {isAdmin ? 'admin' : 'guest'}
         </span>
