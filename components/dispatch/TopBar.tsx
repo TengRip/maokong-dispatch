@@ -5,6 +5,7 @@ import { useApp } from '@/lib/store'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { SettingsPanel } from './SettingsPanel'
+import { DiagnosticsPanel } from './DiagnosticsPanel'
 
 export function TopBar() {
   const { userRole, userEmail, saveSnapshot, cars, maintenanceUnits } = useApp()
@@ -122,6 +123,7 @@ export function TopBar() {
 
       {/* 設定按鈕 + 帳號資訊 */}
       <div className="flex items-center gap-2 ml-2">
+        <DiagnosticsPanel />
         <SettingsPanel />
         <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${isAdmin ? 'bg-blue-500 text-white' : 'bg-slate-500 text-slate-200'}`}>
           {isAdmin ? 'admin' : 'guest'}

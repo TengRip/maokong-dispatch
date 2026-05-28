@@ -4,7 +4,7 @@ import { useState } from 'react'
 import {
   DndContext, DragEndEvent, DragOverlay,
   useSensor, useSensors, PointerSensor,
-  closestCenter,
+  pointerWithin,
 } from '@dnd-kit/core'
 import { useApp } from '@/lib/store'
 import { CarTag } from './CarTag'
@@ -15,16 +15,22 @@ interface PendingMove {
   toSlot?: number
   fromLocation?: string
   reason: string
+  toAreaId?: number   // 測試區 areaId
+  toDay?: string      // 週排程 day
 }
 
 export function DragHandler({ children }: { children: React.ReactNode }) {
-  const { cars, mainLine, maintenanceUnits, updateMainLinePosition, moveCar, logOperation, userRole } = useApp()
+  const {
+    cars, mainLine, maintenanceUnits, testAreas, weeklySchedule,
+    updateMainLinePosition, updateTestArea, updateWeeklySchedule,
+    moveCar, logOperation, userRole,
+  } = useApp()
+
   const isAdmin = userRole === 'admin'
   const [activeCarId, setActiveCarId] = useState<string | null>(null)
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null)
   const maintenanceCarIds = new Set(maintenanceUnits.flatMap(u => u.car_ids))
 
-  // 較低啟動距離，讓拖曳更靈敏
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } })
   )
@@ -47,14 +53,13 @@ export function DragHandler({ children }: { children: React.ReactNode }) {
 
     let toLocation: string = dest.location
     let toSlot: number | undefined = dest.slot
+    const toAreaId: number | undefined = dest.areaId
+    const toDay: string | undefined = dest.day
 
     // 中央自動插入：找第一個空格
     if (toLocation === 'main_line' && toSlot === -1) {
       const firstEmpty = mainLine.positions.findIndex(p => p === null)
-      if (firstEmpty === -1) {
-        // 正線已滿，忽略
-        return
-      }
+      if (firstEmpty === -1) return
       toSlot = firstEmpty
     }
 
@@ -67,28 +72,73 @@ export function DragHandler({ children }: { children: React.ReactNode }) {
 
     if (toLocation === 'main_line' && (hasMaintenance || isInWeekly)) {
       const reason = hasMaintenance ? '本列車有維修需求' : '本列車在週排程中'
-      setPendingMove({ carId, toLocation, toSlot, fromLocation: car.location, reason })
+      setPendingMove({ carId, toLocation, toSlot, fromLocation: car.location, reason, toAreaId, toDay })
       return
     }
 
-    await executeMove(carId, toLocation, toSlot, car.location)
+    await executeMove(carId, toLocation, toSlot, car.location, toAreaId, toDay)
   }
 
   const executeMove = async (
     carId: string,
     toLocation: string,
     toSlot: number | undefined,
-    fromLocation: string
+    fromLocation: string,
+    toAreaId?: number,
+    toDay?: string,
   ) => {
+    // ── 清除來源槽位 ──────────────────────────────────
+    if (fromLocation === 'main_line') {
+      const idx = mainLine.positions.indexOf(carId)
+      if (idx !== -1) await updateMainLinePosition(idx, null)
+
+    } else if (fromLocation === 'test_area') {
+      const fromArea = testAreas.find(a => a.slots.includes(carId))
+      if (fromArea) {
+        const newSlots = [...fromArea.slots] as (string | null)[]
+        const idx = newSlots.indexOf(carId)
+        if (idx !== -1) { newSlots[idx] = null; await updateTestArea(fromArea.id, { slots: newSlots }) }
+      }
+
+    } else if (fromLocation === 'weekly_schedule') {
+      for (const [day, slots] of Object.entries(weeklySchedule)) {
+        const idx = (slots as (string | null)[]).indexOf(carId)
+        if (idx !== -1) {
+          const newSlots = [...slots] as (string | null)[]
+          newSlots[idx] = null
+          await updateWeeklySchedule(day, newSlots)
+          break
+        }
+      }
+    }
+
+    // ── 更新目標槽位 ──────────────────────────────────
     if (toLocation === 'main_line' && toSlot !== undefined) {
       await updateMainLinePosition(toSlot, carId)
+
+    } else if (toLocation === 'test_area' && toAreaId !== undefined && toSlot !== undefined) {
+      const area = testAreas.find(a => a.id === toAreaId)
+      if (area) {
+        const newSlots = [...area.slots] as (string | null)[]
+        newSlots[toSlot] = carId
+        await updateTestArea(toAreaId, { slots: newSlots })
+      }
+
+    } else if (toLocation === 'weekly_schedule' && toDay && toSlot !== undefined) {
+      const slots = [...(weeklySchedule[toDay] ?? Array(10).fill(null))] as (string | null)[]
+      slots[toSlot] = carId
+      await updateWeeklySchedule(toDay, slots)
     }
+
     await moveCar(carId, toLocation, toSlot, fromLocation)
   }
 
   const confirmPendingMove = async () => {
     if (!pendingMove) return
-    await executeMove(pendingMove.carId, pendingMove.toLocation, pendingMove.toSlot, pendingMove.fromLocation ?? '')
+    await executeMove(
+      pendingMove.carId, pendingMove.toLocation, pendingMove.toSlot,
+      pendingMove.fromLocation ?? '', pendingMove.toAreaId, pendingMove.toDay,
+    )
     await logOperation('確認上線（有警告）', pendingMove.carId, pendingMove.fromLocation, 'main_line')
     setPendingMove(null)
   }
@@ -96,18 +146,16 @@ export function DragHandler({ children }: { children: React.ReactNode }) {
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCenter}
+      collisionDetection={pointerWithin}
       onDragStart={e => setActiveCarId(e.active.data.current?.carId ?? null)}
       onDragEnd={handleDragEnd}
     >
       {children}
 
-      {/* 拖曳中的懸浮顯示 */}
       <DragOverlay dropAnimation={null}>
         {activeCarId ? <CarTag carId={activeCarId} draggableId="overlay" /> : null}
       </DragOverlay>
 
-      {/* 上線警告 Modal */}
       {pendingMove && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-80 border border-orange-300 shadow-2xl">

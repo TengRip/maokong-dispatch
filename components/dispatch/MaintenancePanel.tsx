@@ -53,14 +53,17 @@ function MaintenanceUnitCard({ unit }: { unit: MaintenanceUnit }) {
       </div>
 
       {/* 已登錄車號 */}
-      <div className="flex flex-wrap gap-1 min-h-[24px] mb-1.5">
+      <div className="flex flex-wrap gap-1.5 min-h-[28px] mb-2">
         {unit.car_ids.length === 0
           ? <span className="text-slate-400 text-[10px]">（無排程）</span>
           : unit.car_ids.map(cid => (
             <div key={cid} className="flex items-center gap-0.5">
-              <CarTag carId={cid} draggableId={`maintenance_${unit.id}_${cid}`} compact />
+              <CarTag carId={cid} draggableId={`maintenance_${unit.id}_${cid}`} noContextMenu />
               {isAdmin && (
-                <button onClick={() => removeCar(cid)} className="text-slate-400 hover:text-red-500 text-[10px] leading-none">×</button>
+                <button
+                  onClick={() => removeCar(cid)}
+                  className="text-slate-400 hover:text-red-500 text-sm leading-none w-4 h-4 flex items-center justify-center rounded hover:bg-red-50"
+                >×</button>
               )}
             </div>
           ))
@@ -85,8 +88,26 @@ function MaintenanceUnitCard({ unit }: { unit: MaintenanceUnit }) {
   )
 }
 
-export function MaintenancePanel() {
+interface MaintenancePanelProps {
+  // inline 模式：標題常駐展開、A B C 橫排（用於迴圈中央）
+  mode?: 'sidebar' | 'inline'
+}
+
+export function MaintenancePanel({ mode = 'sidebar' }: MaintenancePanelProps) {
   const { maintenanceUnits, showMaintenancePanel, setShowMaintenancePanel } = useApp()
+
+  if (mode === 'inline') {
+    return (
+      <div>
+        <div className="text-slate-600 text-xs font-semibold mb-2">維修排程區</div>
+        <div className="flex gap-2">
+          {maintenanceUnits.map(unit => (
+            <MaintenanceUnitCard key={unit.id} unit={unit} />
+          ))}
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
@@ -97,8 +118,6 @@ export function MaintenancePanel() {
           {showMaintenancePanel ? '收起 ▲' : '展開 ▼'}
         </button>
       </div>
-
-      {/* 垂直排列，不再並排 */}
       {showMaintenancePanel && (
         <div className="flex flex-col gap-2">
           {maintenanceUnits.map(unit => (

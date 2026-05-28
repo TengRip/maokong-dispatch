@@ -1,36 +1,144 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 貓空纜車調度系統
 
-## Getting Started
+貓空纜車車廂即時調度管理工具。以 Next.js + Supabase 建置，支援多人即時同步、拖曳排班、維修標記等功能。
 
-First, run the development server:
+**線上網址：** https://maokong-dispatch.vercel.app
+
+---
+
+## 系統架構
+
+| 層次 | 技術 |
+|------|------|
+| 前端框架 | Next.js 16 (App Router) |
+| 資料庫 | Supabase (PostgreSQL + Realtime) |
+| 部署 | Vercel |
+| 樣式 | Tailwind CSS + shadcn/ui |
+| 拖曳 | dnd-kit |
+
+---
+
+## 功能總覽
+
+### 正線迴圈
+- 支援 **108 車** 與 **130 車** 兩種模式切換
+- 逆時針排列：左欄（去程）↓ → 下排 → 右欄（回程）↑ → 上排，Slot 1 在左上角緊鄰轉角二站
+- 格子序號：空格顯示槽位編號（灰色），有車顯示彩色車廂標籤
+- **拖曳**：從儲車區直接拖到正線任意格，或拖到迴圈中央大面積自動插入第一個空格
+- **雙擊格子**：手動輸入車號，清空後車廂移回轉角二站
+- **130 → 108 切換**：點「108 車」按鈕後輸入起始車號，自動抽出 22 台送回轉角二站
+
+### 車廂操作（右鍵選單）
+在任意車廂標籤上按右鍵可：
+- **← 移至轉角二站**：一鍵移回，同時清除原格位（正線/測試區/週排程皆適用）
+- **★ 設為基準車** / 取消（基準車顯示黃色 ★ 標記）
+- **狀態切換**：可用 ✅ / 不可用 🔴 / 管控 🟠 / 其他 🟢
+
+### 儲車區
+- **轉角二站儲車區**（左側欄）：可收折，收折後仍可接受拖放；上限 40 台
+- **貓空站儲車區**（正線迴圈中央）：上限 10 台
+- 左側欄按 ◀ 收折以釋放正線顯示空間，按 ▶ 展開
+
+### 測試區（正線迴圈中央）
+- 預設顯示 3 個測試區，點數字 0–6 控制顯示數量
+- 每區 6 格，可拖入或點 + 輸入車號，雙擊修改
+- 右鍵選單可一鍵移回轉角二站
+
+### 週排程（正線迴圈中央）
+- 週一至週五各 10 格
+- 可拖入車廂或點 + 輸入
+
+### 維修排程 A / B / C（正線迴圈中央）
+- 三個維修單元橫排，各可自訂名稱
+- 登錄後車廂狀態自動顯示紫色「有維修需求」
+- 輸入車號後即時顯示，不需重整頁面
+
+### 搜尋車號
+TopBar 搜尋框輸入車號（支援 Enter 快速查詢），顯示該車目前所在區域與格位，並標示是否有維修需求。
+
+### 班次快照
+Admin 按「💾 儲存班次」輸入班次說明，系統記錄當下完整狀態（正線排列、各區車廂、維修排程、週排程）。
+
+### 車廂診斷（🔍 診斷）
+TopBar 「🔍 診斷」按鈕（Admin 限定），開啟後自動掃描：
+- 各區車廂數量統計
+- 合計是否達到 149 台（1–147 + M1 + M2）
+- 異常偵測：孤兒車（DB 說在某區但 slots 找不到）、幽靈車（slots 有但 DB 位置不符）、未分配車、重複出現
+- **一鍵修復**：異常車廂批次移回轉角二站，幽靈格位清除
+
+### 系統設定（⚙）
+Admin 限定，包含：
+- **帳號管理**：新增 / 刪除帳號、切換 admin / guest 角色
+- **水晶車設定**：點選車號切換水晶車（黃色）
+- **報廢車管理**：設定後強制封鎖上正線
+- **狀態顏色**：自訂各狀態顏色
+
+---
+
+## 帳號與權限
+
+| 角色 | 功能 |
+|------|------|
+| admin | 完整操作（拖曳、修改、設定） |
+| guest | 唯讀（看即時狀態、搜尋） |
+
+帳號由 admin 在系統設定 → 帳號管理新增。
+
+---
+
+## 車廂狀態對照
+
+| 顏色 | 狀態 |
+|------|------|
+| 藍色 | 一般車可用 |
+| 黃色 | 水晶車可用 |
+| 灰色 | 維修車（M1/M2）|
+| 紅色 | 不可用 |
+| 黑色 | 報廢（無法上正線）|
+| 橘色 | 管控 |
+| 紫色 | 有維修需求（由維修排程驅動）|
+| 綠色 | 其他 |
+
+---
+
+## 本機開發
 
 ```bash
+# 安裝依賴
+npm install
+
+# 啟動開發伺服器
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# → http://localhost:3000
+
+# 建置
+npm run build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 環境變數（.env.local）
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=...
+SUPABASE_SERVICE_ROLE_KEY=...
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 資料庫初始化
 
-## Learn More
+```bash
+# 在 Supabase SQL Editor 依序執行：
+supabase/schema.sql   # 建表
+supabase/seed.sql     # 初始化 149 台車廂資料
+```
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 部署
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+# 部署至 Vercel（preview）
+vercel
 
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# 部署至正式環境
+vercel --prod
+```

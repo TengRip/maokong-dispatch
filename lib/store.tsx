@@ -289,17 +289,21 @@ export function AppProvider({ children, userRole, userEmail }: {
 
   const updateTestArea = useCallback(async (areaId: number, updates: Partial<TestArea>) => {
     if (!isAdmin) return
+    setTestAreas(prev => prev.map(a => a.id === areaId ? { ...a, ...updates } : a))
     await supabase.from('test_areas').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', areaId)
   }, [isAdmin, supabase])
 
   const updateMaintenanceUnit = useCallback(async (unitId: number, updates: Partial<MaintenanceUnit>) => {
     if (!isAdmin) return
+    // 樂觀更新：立即反映，不等 Realtime
+    setMaintenanceUnits(prev => prev.map(u => u.id === unitId ? { ...u, ...updates } : u))
     await supabase.from('maintenance_units').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', unitId)
     await logOperation('更新維修排程', undefined, undefined, undefined, `單位 ${unitId}`)
   }, [isAdmin, supabase, logOperation])
 
   const updateWeeklySchedule = useCallback(async (day: string, slots: (string | null)[]) => {
     if (!isAdmin) return
+    setWeeklySchedule(prev => ({ ...prev, [day]: slots }))
     await supabase.from('weekly_schedule').update({
       [day]: slots,
       updated_at: new Date().toISOString()

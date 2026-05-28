@@ -41,7 +41,7 @@ function TestAreaSlot({ areaId, slotIndex, carId }: { areaId: number; slotIndex:
           maxLength={4}
         />
       ) : carId ? (
-        <div onDoubleClick={() => isAdmin && (() => { setInputVal(carId); setEditing(true) })()}>
+        <div className="w-full h-full" onDoubleClick={() => isAdmin && (() => { setInputVal(carId); setEditing(true) })()}>
           <CarTag carId={carId} draggableId={`test_area_${areaId}_${slotIndex}_${carId}`} compact />
         </div>
       ) : (
@@ -123,24 +123,47 @@ function TestAreaCard({ area }: { area: TestArea }) {
   )
 }
 
-export function TestAreaPanel() {
+interface TestAreaPanelProps {
+  mode?: 'sidebar' | 'inline'
+}
+
+export function TestAreaPanel({ mode = 'sidebar' }: TestAreaPanelProps) {
   const { testAreas, visibleTestAreas, setVisibleTestAreas, userRole } = useApp()
   const isAdmin = userRole === 'admin'
 
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between">
-        <span className="text-slate-600 text-xs font-semibold">測試區</span>
-        <div className="flex items-center gap-1">
-          <span className="text-slate-400 text-[10px]">顯示：</span>
-          {[0, 1, 2, 3, 4, 5, 6].map(n => (
-            <button key={n} onClick={() => isAdmin && setVisibleTestAreas(n)}
-              className={`w-5 h-5 text-[10px] rounded ${visibleTestAreas === n ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
-            >{n}</button>
+  const header = (
+    <div className="flex items-center gap-2 mb-2 flex-shrink-0">
+      <span className="text-slate-600 text-xs font-semibold">測試區</span>
+      <div className="flex items-center gap-0.5">
+        {[0, 1, 2, 3, 4, 5, 6].map(n => (
+          <button key={n} onClick={() => isAdmin && setVisibleTestAreas(n)}
+            className={`w-5 h-5 text-[10px] rounded ${visibleTestAreas === n ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
+          >{n}</button>
+        ))}
+      </div>
+    </div>
+  )
+
+  if (mode === 'inline') {
+    return (
+      <div>
+        {header}
+        {/* 橫排：最多六區，超過自動換行 */}
+        <div className="flex flex-wrap gap-2">
+          {testAreas.slice(0, visibleTestAreas).map(area => (
+            <TestAreaCard key={area.id} area={area} />
           ))}
+          {visibleTestAreas === 0 && (
+            <span className="text-slate-400 text-[10px]">（已隱藏）</span>
+          )}
         </div>
       </div>
+    )
+  }
 
+  return (
+    <div className="flex flex-col gap-2">
+      {header}
       {testAreas.slice(0, visibleTestAreas).map(area => (
         <TestAreaCard key={area.id} area={area} />
       ))}
