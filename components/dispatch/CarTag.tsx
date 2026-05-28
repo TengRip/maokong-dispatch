@@ -36,9 +36,9 @@ export function CarTag({ carId, draggableId, compact = false }: CarTagProps) {
         cursor: isAdmin ? 'grab' : 'default',
       }}
       className={`
-        relative inline-flex items-center justify-center rounded font-bold select-none
+        relative inline-flex items-center justify-center rounded-sm font-bold select-none
         border border-white/20 shadow-sm transition-opacity
-        ${compact ? 'text-[10px] w-8 h-6' : 'text-xs px-2 py-1 min-w-[2.5rem]'}
+        ${compact ? 'text-[10px] w-full h-full' : 'text-xs px-2 py-1 min-w-[2.5rem]'}
         ${isDragging ? 'z-50' : ''}
       `}
     >

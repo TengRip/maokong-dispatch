@@ -103,13 +103,36 @@ export function AppProvider({ children, userRole, userEmail }: {
   }
 
   function setupRealtime() {
-    // 監聽所有表格的即時更新
+    // 監聽各表格變更，只更新對應的 state（避免整體 reload）
     const channel = supabase.channel('dispatch-sync')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'cars' }, () => loadAllData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'main_line' }, () => loadAllData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'test_areas' }, () => loadAllData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'maintenance_units' }, () => loadAllData())
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'weekly_schedule' }, () => loadAllData())
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'cars' }, (payload) => {
+        if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
+          const c = payload.new as Car
+          setCars(prev => ({ ...prev, [c.id]: c }))
+        }
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'main_line' }, (payload) => {
+        const ml = payload.new as { mode: number; positions: (string | null)[] }
+        setMainLine({ mode: ml.mode as 108 | 130, positions: ml.positions })
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'test_areas' }, (payload) => {
+        const ta = payload.new as TestArea
+        setTestAreas(prev => prev.map(a => a.id === ta.id ? ta : a))
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'maintenance_units' }, (payload) => {
+        const mu = payload.new as MaintenanceUnit
+        setMaintenanceUnits(prev => prev.map(u => u.id === mu.id ? mu : u))
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'weekly_schedule' }, (payload) => {
+        const ws = payload.new as Record<string, unknown>
+        const { id, updated_at, ...days } = ws
+        setWeeklySchedule(days as unknown as WeeklySchedule)
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'status_colors' }, (payload) => {
+        const sc = payload.new as Record<string, unknown>
+        const { id, updated_at, ...colors } = sc
+        setStatusColors(colors as unknown as StatusColors)
+      })
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
@@ -155,13 +178,27 @@ export function AppProvider({ children, userRole, userEmail }: {
     // 報廢車不能上正線
     if (toLocation === 'main_line' && car.status === 'scrapped') return
 
-    await supabase.from('cars').update({
+    // 樂觀更新：立即更新本地 state
+    setCars(prev => ({
+      ...prev,
+      [carId]: { ...prev[carId], location: toLocation as Car['location'], location_slot: toSlot ?? undefined }
+    }))
+
+    // 背景送 Supabase
+    const { error } = await supabase.from('cars').update({
       location: toLocation,
       location_slot: toSlot ?? null,
       updated_at: new Date().toISOString(),
     }).eq('id', carId)
 
-    await logOperation('移動車廂', carId, fromLocation, toLocation, `格位 ${toSlot ?? '-'}`)
+    if (error) {
+      // 失敗則回滾
+      setCars(prev => ({ ...prev, [carId]: car }))
+      console.error('moveCar 失敗:', error)
+      return
+    }
+
+    logOperation('移動車廂', carId, fromLocation, toLocation, `格位 ${toSlot ?? '-'}`)
   }, [cars, isAdmin, supabase, logOperation])
 
   const updateCarStatus = useCallback(async (carId: string, status: Car['status']) => {
@@ -189,11 +226,29 @@ export function AppProvider({ children, userRole, userEmail }: {
     if (!isAdmin) return
     const newPositions = [...mainLine.positions]
     while (newPositions.length <= index) newPositions.push(null)
+
+    // 若該車已經在正線其他位置，先清掉原位（避免重複）
+    if (carId) {
+      const oldIdx = newPositions.indexOf(carId)
+      if (oldIdx !== -1 && oldIdx !== index) newPositions[oldIdx] = null
+    }
+
     newPositions[index] = carId
-    await supabase.from('main_line').update({
+
+    // 樂觀更新
+    const prevPositions = mainLine.positions
+    setMainLine(prev => ({ ...prev, positions: newPositions }))
+
+    const { error } = await supabase.from('main_line').update({
       positions: newPositions,
       updated_at: new Date().toISOString()
     }).eq('id', 1)
+
+    if (error) {
+      // 回滾
+      setMainLine(prev => ({ ...prev, positions: prevPositions }))
+      console.error('updateMainLinePosition 失敗:', error)
+    }
   }, [isAdmin, mainLine.positions, supabase])
 
   const extractCarsFrom130To108 = useCallback(async (startCarId: string) => {
