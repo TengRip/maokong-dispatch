@@ -93,11 +93,11 @@ export function DragHandler({ children }: { children: React.ReactNode }) {
 
       {/* 上線警告 Modal */}
       {pendingMove && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-slate-800 rounded-xl p-6 w-80 border border-orange-600 shadow-2xl">
-            <div className="text-orange-400 text-2xl text-center mb-3">⚠</div>
-            <h3 className="text-white font-bold text-center mb-3">上線警告</h3>
-            <p className="text-slate-300 text-sm text-center mb-4">
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-80 border border-orange-600 shadow-2xl">
+            <div className="text-orange-500 text-2xl text-center mb-3">⚠</div>
+            <h3 className="text-slate-900 font-bold text-center mb-3">上線警告</h3>
+            <p className="text-slate-600 text-sm text-center mb-4">
               {pendingMove.reason}，請問是否確認上線？
             </p>
             <div className="flex items-center gap-2 mb-4">
@@ -107,13 +107,13 @@ export function DragHandler({ children }: { children: React.ReactNode }) {
             <div className="flex gap-2">
               <button
                 onClick={confirmPendingMove}
-                className="flex-1 bg-orange-600 hover:bg-orange-700 text-white rounded px-3 py-2 text-sm font-medium"
+                className="flex-1 bg-orange-600 hover:bg-orange-700 text-slate-900 rounded px-3 py-2 text-sm font-medium"
               >
                 確認上線
               </button>
               <button
                 onClick={() => setPendingMove(null)}
-                className="flex-1 bg-slate-600 hover:bg-slate-500 text-white rounded px-3 py-2 text-sm"
+                className="flex-1 bg-slate-200 hover:bg-slate-500 text-slate-900 rounded px-3 py-2 text-sm"
               >
                 取消
               </button>

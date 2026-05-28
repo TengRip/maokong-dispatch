@@ -33,7 +33,7 @@ function MaintenanceUnitCard({ unit }: { unit: MaintenanceUnit }) {
   }
 
   return (
-    <div className="bg-slate-800/80 rounded-lg border border-slate-600 p-2 flex-1">
+    <div className="bg-white/80 rounded-lg border border-slate-300 p-2 flex-1">
       {editingName ? (
         <input
           autoFocus
@@ -41,11 +41,11 @@ function MaintenanceUnitCard({ unit }: { unit: MaintenanceUnit }) {
           onChange={e => setNameVal(e.target.value)}
           onBlur={saveName}
           onKeyDown={e => { if (e.key === 'Enter') saveName() }}
-          className="w-full text-xs bg-slate-700 text-white px-1 rounded outline-none border border-blue-500 mb-1.5"
+          className="w-full text-xs bg-slate-100 text-slate-900 px-1 rounded outline-none border border-blue-500 mb-1.5"
         />
       ) : (
         <div
-          className={`text-xs font-medium text-purple-300 mb-1.5 ${isAdmin ? 'cursor-pointer hover:text-purple-200' : ''}`}
+          className={`text-xs font-medium text-purple-600 mb-1.5 ${isAdmin ? 'cursor-pointer hover:text-purple-200' : ''}`}
           onClick={() => isAdmin && setEditingName(true)}
         >
           {unit.name}
@@ -78,12 +78,12 @@ function MaintenanceUnitCard({ unit }: { unit: MaintenanceUnit }) {
             onChange={e => setInputCar(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') addCar() }}
             placeholder="輸入車號"
-            className="flex-1 text-[10px] bg-slate-700 border border-slate-600 rounded px-1 py-0.5 text-white outline-none focus:border-purple-500"
+            className="flex-1 text-[10px] bg-slate-100 border border-slate-300 rounded px-1 py-0.5 text-slate-900 outline-none focus:border-purple-500"
             maxLength={4}
           />
           <button
             onClick={addCar}
-            className="text-[10px] bg-purple-700 hover:bg-purple-600 text-white rounded px-1.5 py-0.5"
+            className="text-[10px] bg-purple-500 hover:bg-purple-400 text-slate-900 rounded px-1.5 py-0.5"
           >
             +
           </button>
@@ -100,10 +100,10 @@ export function MaintenancePanel() {
   return (
     <div>
       <div className="flex items-center justify-between mb-1">
-        <span className="text-slate-400 text-xs font-medium">維修排程區</span>
+        <span className="text-slate-500 text-xs font-medium">維修排程區</span>
         <button
           onClick={() => setShowMaintenancePanel(!showMaintenancePanel)}
-          className="text-[10px] text-slate-500 hover:text-slate-300 border border-slate-600 rounded px-1.5 py-0.5"
+          className="text-[10px] text-slate-500 hover:text-slate-600 border border-slate-300 rounded px-1.5 py-0.5"
         >
           {showMaintenancePanel ? '收起 ▲' : '展開 ▼'}
         </button>

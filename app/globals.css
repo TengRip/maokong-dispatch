@@ -122,8 +122,8 @@
     @apply border-border outline-ring/50;
   }
   body {
-    background-color: #0f172a;
-    color: #f1f5f9;
+    background-color: #f1f5f9;
+    color: #1e293b;
     overflow: hidden;
   }
   html {
@@ -133,6 +133,6 @@
 
 /* 捲動條樣式 */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #1e293b; }
-::-webkit-scrollbar-thumb { background: #475569; border-radius: 3px; }
+::-webkit-scrollbar-track { background: #e2e8f0; }
+::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #64748b; }

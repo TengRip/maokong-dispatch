@@ -33,7 +33,7 @@ function TestAreaSlot({ areaId, slotIndex, carId }: { areaId: number; slotIndex:
       onDoubleClick={() => { if (isAdmin) { setInputVal(carId ?? ''); setEditing(true) } }}
       className={`
         w-10 h-8 flex items-center justify-center rounded border text-[10px]
-        ${isOver ? 'border-blue-500 bg-blue-900/30' : carId ? 'border-slate-500 bg-slate-700' : 'border-slate-700 bg-slate-800/40'}
+        ${isOver ? 'border-blue-500 bg-blue-900/30' : carId ? 'border-slate-300 bg-slate-100' : 'border-slate-200 bg-white/40'}
         cursor-default
       `}
     >
@@ -44,7 +44,7 @@ function TestAreaSlot({ areaId, slotIndex, carId }: { areaId: number; slotIndex:
           onChange={e => setInputVal(e.target.value)}
           onBlur={handleConfirm}
           onKeyDown={e => { if (e.key === 'Enter') handleConfirm() }}
-          className="w-full h-full text-center text-[10px] bg-slate-600 text-white outline-none rounded"
+          className="w-full h-full text-center text-[10px] bg-slate-200 text-slate-900 outline-none rounded"
           maxLength={4}
         />
       ) : carId ? (
@@ -75,7 +75,7 @@ function TestAreaCard({ area }: { area: TestArea }) {
   }
 
   return (
-    <div className="bg-slate-800 rounded-lg border border-slate-600 p-2">
+    <div className="bg-white rounded-lg border border-slate-300 p-2">
       <div className="flex items-center gap-1 mb-1.5">
         {editingName ? (
           <input
@@ -84,11 +84,11 @@ function TestAreaCard({ area }: { area: TestArea }) {
             onChange={e => setNameVal(e.target.value)}
             onBlur={saveName}
             onKeyDown={e => { if (e.key === 'Enter') saveName() }}
-            className="flex-1 text-xs bg-slate-700 text-white px-1 rounded outline-none border border-blue-500"
+            className="flex-1 text-xs bg-slate-100 text-slate-900 px-1 rounded outline-none border border-blue-500"
           />
         ) : (
           <span
-            className={`text-xs font-medium text-slate-200 flex-1 ${isAdmin ? 'cursor-pointer hover:text-white' : ''}`}
+            className={`text-xs font-medium text-slate-800 flex-1 ${isAdmin ? 'cursor-pointer hover:text-slate-900' : ''}`}
             onClick={() => isAdmin && setEditingName(true)}
           >
             {area.name || `測試區 ${area.id}`}
@@ -110,7 +110,7 @@ function TestAreaCard({ area }: { area: TestArea }) {
           value={notesVal}
           onChange={e => setNotesVal(e.target.value)}
           onBlur={saveNotes}
-          className="w-full text-[10px] bg-slate-700 text-slate-300 px-1 rounded outline-none border border-blue-500 resize-none"
+          className="w-full text-[10px] bg-slate-100 text-slate-600 px-1 rounded outline-none border border-blue-500 resize-none"
           rows={2}
         />
       ) : (
@@ -132,7 +132,7 @@ export function TestAreaPanel() {
   return (
     <div className="flex flex-col gap-2">
       <div className="flex items-center justify-between">
-        <span className="text-slate-400 text-xs font-medium">測試區</span>
+        <span className="text-slate-500 text-xs font-medium">測試區</span>
         <div className="flex items-center gap-1">
           <span className="text-slate-500 text-[10px]">顯示：</span>
           {[0, 1, 2, 3, 4, 5, 6].map(n => (
@@ -140,7 +140,7 @@ export function TestAreaPanel() {
               key={n}
               onClick={() => isAdmin && setVisibleTestAreas(n)}
               className={`w-5 h-5 text-[10px] rounded ${
-                visibleTestAreas === n ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-400 hover:bg-slate-600'
+                visibleTestAreas === n ? 'bg-blue-600 text-slate-900' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
               }`}
             >
               {n}

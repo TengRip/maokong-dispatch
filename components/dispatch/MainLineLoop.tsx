@@ -51,7 +51,7 @@ function LoopSlot({
       className={`
         ${cls} relative flex items-center justify-center rounded-sm border cursor-default
         transition-colors text-[9px] select-none
-        ${isOver ? 'border-blue-400 bg-blue-900/50' : carId ? 'border-slate-500 bg-slate-700' : 'border-slate-700/60 bg-slate-800/30'}
+        ${isOver ? 'border-blue-400 bg-blue-100' : carId ? 'border-slate-400 bg-white' : 'border-slate-300 bg-slate-100'}
       `}
     >
       {editing ? (
@@ -60,13 +60,13 @@ function LoopSlot({
           onChange={e => setInputVal(e.target.value)}
           onBlur={handleConfirm}
           onKeyDown={e => { if (e.key === 'Enter') handleConfirm() }}
-          className="w-full h-full text-center text-[9px] bg-slate-600 text-white outline-none rounded-sm"
+          className="w-full h-full text-center text-[9px] bg-white text-slate-800 outline-none rounded-sm border border-blue-400"
           maxLength={4}
         />
       ) : carId ? (
         <CarTag carId={carId} draggableId={`ml_${index}_${carId}`} compact />
       ) : (
-        <span className="text-slate-700 text-[7px]">{index + 1}</span>
+        <span className="text-slate-300 text-[7px]">{index + 1}</span>
       )}
     </div>
   )
@@ -113,17 +113,17 @@ export function MainLineLoop() {
     <div className="flex flex-col items-center gap-2 select-none">
       {/* 模式切換列 */}
       <div className="flex items-center gap-3">
-        <span className="text-slate-400 text-xs">正線模式：</span>
-        <div className="flex rounded overflow-hidden border border-slate-600">
+        <span className="text-slate-600 text-xs">正線模式：</span>
+        <div className="flex rounded overflow-hidden border border-slate-300">
           {([108, 130] as const).map(m => (
             <button key={m}
               onClick={() => handleModeSwitch(m)}
               disabled={!isAdmin}
-              className={`px-4 py-1 text-xs font-medium transition-colors ${mode === m ? 'bg-blue-600 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+              className={`px-4 py-1 text-xs font-medium transition-colors ${mode === m ? 'bg-blue-600 text-white' : 'bg-white text-slate-600 hover:bg-slate-100'}`}
             >{m} 車</button>
           ))}
         </div>
-        <span className="text-slate-500 text-xs">已排 {filled} 台</span>
+        <span className="text-slate-400 text-xs">已排 {filled} 台</span>
       </div>
 
       {/* 矩形迴圈本體 */}
@@ -132,7 +132,7 @@ export function MainLineLoop() {
         {/* 上排：回程（貓空→轉角），由右往左 */}
         <div className="flex items-center gap-px">
           {/* 左上角 */}
-          <div className="w-5 h-5 border-l-2 border-t-2 border-slate-500 rounded-tl-lg flex items-end justify-end">
+          <div className="w-5 h-5 border-l-2 border-t-2 border-slate-400 rounded-tl-lg flex items-end justify-end">
             <span className="text-slate-500 text-[8px] leading-none mb-0.5 mr-0.5">↑</span>
           </div>
           <div className="flex gap-px items-center">
@@ -141,7 +141,7 @@ export function MainLineLoop() {
             ))}
           </div>
           {/* 右上角 */}
-          <div className="w-5 h-5 border-r-2 border-t-2 border-slate-500 rounded-tr-lg flex items-end justify-start">
+          <div className="w-5 h-5 border-r-2 border-t-2 border-slate-400 rounded-tr-lg flex items-end justify-start">
             <span className="text-slate-500 text-[8px] leading-none mb-0.5 ml-0.5">↑</span>
           </div>
         </div>
@@ -149,7 +149,7 @@ export function MainLineLoop() {
         {/* 中段：左側 + 中央說明 + 右側 */}
         <div className="flex items-stretch gap-0">
           {/* 左側：去程（轉角→貓空），由下往上 */}
-          <div className="flex flex-col gap-px border-l-2 border-slate-500 pl-px">
+          <div className="flex flex-col gap-px border-l-2 border-slate-400 pl-px">
             {[...leftIdx].reverse().map(i => (
               <LoopSlot key={i} index={i} carId={getSlotCar(i)} orientation="v" />
             ))}
@@ -162,7 +162,7 @@ export function MainLineLoop() {
                 <span className="text-base">↑</span>
                 <span className="text-[10px]">去程</span>
               </div>
-              <div className="text-slate-600 text-[9px] leading-relaxed text-center">
+              <div className="text-slate-400 text-[9px] leading-relaxed text-center">
                 <div>轉角二站</div>
                 <div>⬆ ⬇</div>
                 <div>貓空站</div>
@@ -175,7 +175,7 @@ export function MainLineLoop() {
           </div>
 
           {/* 右側：回程（貓空→轉角），由上往下 */}
-          <div className="flex flex-col gap-px border-r-2 border-slate-500 pr-px">
+          <div className="flex flex-col gap-px border-r-2 border-slate-400 pr-px">
             {rightIdx.map(i => (
               <LoopSlot key={i} index={i} carId={getSlotCar(i)} orientation="v" />
             ))}
@@ -185,7 +185,7 @@ export function MainLineLoop() {
         {/* 下排：去程（轉角→貓空），由左往右 */}
         <div className="flex items-center gap-px">
           {/* 左下角 */}
-          <div className="w-5 h-5 border-l-2 border-b-2 border-slate-500 rounded-bl-lg flex items-start justify-end">
+          <div className="w-5 h-5 border-l-2 border-b-2 border-slate-400 rounded-bl-lg flex items-start justify-end">
             <span className="text-slate-500 text-[8px] leading-none mt-0.5 mr-0.5">↓</span>
           </div>
           <div className="flex gap-px items-center">
@@ -194,7 +194,7 @@ export function MainLineLoop() {
             ))}
           </div>
           {/* 右下角 */}
-          <div className="w-5 h-5 border-r-2 border-b-2 border-slate-500 rounded-br-lg flex items-start justify-start">
+          <div className="w-5 h-5 border-r-2 border-b-2 border-slate-400 rounded-br-lg flex items-start justify-start">
             <span className="text-slate-500 text-[8px] leading-none mt-0.5 ml-0.5">↓</span>
           </div>
         </div>
@@ -209,23 +209,23 @@ export function MainLineLoop() {
 
       {/* 130→108 抽車 Modal */}
       {showExtract && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
-          <div className="bg-slate-800 rounded-xl p-6 w-80 border border-slate-600 shadow-2xl">
-            <h3 className="text-white font-bold mb-2">130 → 108 切換</h3>
-            <p className="text-slate-400 text-sm mb-4">
-              輸入<strong className="text-white">起始車號</strong>，系統將從該車起連續抽出 22 台放回轉角二站。
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-80 border border-slate-200 shadow-2xl">
+            <h3 className="text-slate-800 font-bold mb-2">130 → 108 切換</h3>
+            <p className="text-slate-500 text-sm mb-4">
+              輸入<strong className="text-slate-800">起始車號</strong>，系統將從該車起連續抽出 22 台放回轉角二站。
             </p>
             <input
               autoFocus value={extractStart}
               onChange={e => setExtractStart(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') handleExtractConfirm() }}
               placeholder="例如：45"
-              className="w-full bg-slate-700 border border-slate-500 rounded px-3 py-2 text-white text-sm mb-2 focus:outline-none focus:border-blue-500"
+              className="w-full bg-slate-50 border border-slate-300 rounded px-3 py-2 text-slate-800 text-sm mb-2 focus:outline-none focus:border-blue-500"
             />
-            {extractErr && <p className="text-red-400 text-xs mb-2">{extractErr}</p>}
+            {extractErr && <p className="text-red-500 text-xs mb-2">{extractErr}</p>}
             <div className="flex gap-2">
-              <button onClick={handleExtractConfirm} className="flex-1 bg-orange-600 hover:bg-orange-700 text-white rounded px-3 py-2 text-sm font-medium">確認抽出</button>
-              <button onClick={() => { setShowExtract(false); setExtractErr('') }} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white rounded px-3 py-2 text-sm">取消</button>
+              <button onClick={handleExtractConfirm} className="flex-1 bg-orange-500 hover:bg-orange-600 text-white rounded px-3 py-2 text-sm font-medium">確認抽出</button>
+              <button onClick={() => { setShowExtract(false); setExtractErr('') }} className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded px-3 py-2 text-sm">取消</button>
             </div>
           </div>
         </div>

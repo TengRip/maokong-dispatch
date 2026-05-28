@@ -36,7 +36,7 @@ function WeeklySlot({ day, index, carId }: { day: string; index: number; carId: 
       onDoubleClick={handleDoubleClick}
       className={`
         w-10 h-8 flex items-center justify-center rounded border text-[10px]
-        ${isOver ? 'border-purple-500 bg-purple-900/30' : carId ? 'border-slate-500 bg-slate-700' : 'border-slate-700 bg-slate-800/40'}
+        ${isOver ? 'border-purple-500 bg-purple-900/30' : carId ? 'border-slate-300 bg-slate-100' : 'border-slate-200 bg-white/40'}
         cursor-default
       `}
     >
@@ -54,7 +54,7 @@ export function WeeklySchedulePanel() {
 
   return (
     <div>
-      <div className="text-slate-400 text-xs font-medium mb-2">週排程區</div>
+      <div className="text-slate-500 text-xs font-medium mb-2">週排程區</div>
       <div className="flex gap-2 overflow-x-auto pb-1">
         {DAYS.map(({ key, label }) => {
           const slots: (string | null)[] = weeklySchedule[key] ?? Array(10).fill(null)
