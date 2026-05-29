@@ -151,6 +151,32 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
           fill="none" stroke="#94a3b8" strokeWidth="1.5" rx="6" />
       </svg>
 
+      {/* 上排方向箭頭（← 回程） */}
+      <div style={{
+        position: 'absolute', top: 0, left: RW, width: loopWidth - 2 * RW, height: SH,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        pointerEvents: 'none', zIndex: 5,
+      }}>
+        <span style={{
+          color: '#f97316', fontWeight: 900, fontSize: 13,
+          background: 'rgba(255,255,255,0.8)', borderRadius: 3,
+          padding: '1px 10px', letterSpacing: '4px',
+        }}>← ← ←</span>
+      </div>
+
+      {/* 下排方向箭頭（→ 去程） */}
+      <div style={{
+        position: 'absolute', top: loopHeight - SH, left: RW, width: loopWidth - 2 * RW, height: SH,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        pointerEvents: 'none', zIndex: 5,
+      }}>
+        <span style={{
+          color: '#3b82f6', fontWeight: 900, fontSize: 13,
+          background: 'rgba(255,255,255,0.8)', borderRadius: 3,
+          padding: '1px 10px', letterSpacing: '4px',
+        }}>→ → →</span>
+      </div>
+
       {/* 左側：slot 1 在最上方，由上往下 */}
       {leftIdx.map((idx, dPos) => (
         <div key={`l${idx}`} style={{ position: 'absolute', left: 0, top: sideY(dPos) }}>
