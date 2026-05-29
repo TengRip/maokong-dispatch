@@ -280,7 +280,7 @@ export function DiagnosticsPanel() {
     setResult(prev => prev ? { ...prev, issues: [], ghostPositions: [] } : prev)
   }
 
-  const EXPECTED = 149
+  const EXPECTED = 151
 
   const issueColor: Record<IssueType, string> = {
     unassigned:     'text-red-600 bg-red-50',
