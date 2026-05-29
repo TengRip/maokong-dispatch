@@ -19,7 +19,7 @@ export function MaintenanceNotesSidebar() {
 
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-2 flex flex-col gap-1.5">
-      <span className="text-xs font-semibold text-slate-600">維修車需求日</span>
+      <span className="text-xs font-semibold text-slate-600">貓空站維修車活動日</span>
       <textarea
         value={val}
         onChange={e => handleChange(e.target.value)}

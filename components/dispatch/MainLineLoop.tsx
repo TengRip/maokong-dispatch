@@ -203,7 +203,6 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
           width: loopWidth - 2 * RW,
           height: loopHeight - 2 * RH,
           background: isCenterOver ? 'rgba(219,234,254,0.7)' : 'rgba(248,250,252,0.5)',
-          border: '3px solid #a5b4c8',
           transition: 'background 0.15s',
           display: 'flex',
           flexDirection: 'column',
@@ -245,7 +244,7 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
           </div>
 
           {/* 中間面板（可垂直捲動） */}
-          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', minWidth: 0, border: '3px solid #94afc4', borderRadius: '6px' }}>
 
             {/* 週排程 + 維修排程 + 佈告欄（橫排，超寬可橫向捲） */}
             <div className="flex items-start gap-4 px-3 py-3 flex-shrink-0 overflow-x-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
