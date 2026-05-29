@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useApp } from '@/lib/store'
 import { createClient } from '@/lib/supabase/client'
 
-type TabId = 'users' | 'crystal' | 'scrapped' | 'colors'
+type TabId = 'users' | 'crystal' | 'shuangwo' | 'dong' | 'scrapped' | 'colors'
 
 interface UserRecord {
   id: string
@@ -123,7 +123,7 @@ function CrystalTab() {
 
   const handleSave = async () => {
     if (!confirm('確認儲存水晶車設定？')) return
-    await supabase.from('cars').update({ type: 'regular' }).neq('type', 'maintenance_vehicle')
+    await supabase.from('cars').update({ type: 'regular' }).eq('type', 'crystal')
     if (selected.size > 0)
       await supabase.from('cars').update({ type: 'crystal' }).in('id', Array.from(selected))
     setSaved(true)
@@ -145,6 +145,52 @@ function CrystalTab() {
       </div>
       <div className="flex items-center gap-3">
         <button onClick={handleSave} className="bg-yellow-500 hover:bg-yellow-600 text-white rounded px-4 py-1.5 text-xs font-medium">儲存水晶車設定</button>
+        {saved && <span className="text-green-600 text-xs">✓ 已儲存</span>}
+      </div>
+    </div>
+  )
+}
+
+// ── 通用特殊車型設定（雙握車、洞車） ──────────────────────────
+function CarTypeTab({ typeKey, typeName }: { typeKey: string; typeName: string }) {
+  const { cars } = useApp()
+  const supabase = createClient()
+  const [selected, setSelected] = useState<Set<string>>(() => {
+    const s = new Set<string>()
+    Object.values(cars).forEach(c => { if (c.type === typeKey) s.add(c.id) })
+    return s
+  })
+  const [saved, setSaved] = useState(false)
+
+  const toggle = (id: string) => {
+    setSaved(false)
+    setSelected(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+
+  const handleSave = async () => {
+    if (!confirm(`確認儲存${typeName}設定？`)) return
+    await supabase.from('cars').update({ type: 'regular' }).eq('type', typeKey)
+    if (selected.size > 0)
+      await supabase.from('cars').update({ type: typeKey }).in('id', Array.from(selected))
+    setSaved(true)
+  }
+
+  const ids = Array.from({ length: 147 }, (_, i) => String(i + 1))
+
+  return (
+    <div>
+      <p className="text-slate-500 text-xs mb-1">點選車號切換{typeName}（灰色），可修改後重新儲存。</p>
+      <p className="text-slate-400 text-[10px] mb-3">已選 {selected.size} 台{typeName}</p>
+      <div className="flex flex-wrap gap-1 mb-4 max-h-[280px] overflow-y-auto pr-1">
+        {ids.map(id => (
+          <button key={id} onClick={() => toggle(id)}
+            className={`w-9 h-7 rounded text-xs font-bold border transition-colors ${
+              selected.has(id) ? 'bg-gray-400 border-gray-500 text-white' : 'bg-white border-slate-300 text-slate-600 hover:bg-slate-100'
+            }`}>{id}</button>
+        ))}
+      </div>
+      <div className="flex items-center gap-3">
+        <button onClick={handleSave} className="bg-gray-500 hover:bg-gray-600 text-white rounded px-4 py-1.5 text-xs font-medium">儲存{typeName}設定</button>
         {saved && <span className="text-green-600 text-xs">✓ 已儲存</span>}
       </div>
     </div>
@@ -209,6 +255,8 @@ function ColorsTab() {
   const labels: Record<string, string> = {
     available_regular: '可用車（一般車）',
     available_crystal: '可用車（水晶車）',
+    available_shuangwo: '可用車（雙握車）',
+    available_dong: '可用車（洞車）',
     maintenance_vehicle: '維修車',
     unavailable: '不可用車',
     scrapped: '報廢車',
@@ -255,6 +303,8 @@ export function SettingsPanel() {
   const tabs: { id: TabId; label: string }[] = [
     { id: 'users', label: '帳號管理' },
     { id: 'crystal', label: '水晶車' },
+    { id: 'shuangwo', label: '雙握車' },
+    { id: 'dong', label: '洞車' },
     { id: 'scrapped', label: '報廢車' },
     { id: 'colors', label: '狀態顏色' },
   ]
@@ -284,6 +334,8 @@ export function SettingsPanel() {
             <div className="flex-1 overflow-y-auto p-5 bg-white">
               {tab === 'users' && <UsersTab />}
               {tab === 'crystal' && <CrystalTab />}
+              {tab === 'shuangwo' && <CarTypeTab typeKey="shuangwo" typeName="雙握車" />}
+              {tab === 'dong' && <CarTypeTab typeKey="dong" typeName="洞車" />}
               {tab === 'scrapped' && <ScrappedTab />}
               {tab === 'colors' && <ColorsTab />}
             </div>

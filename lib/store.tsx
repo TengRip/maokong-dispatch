@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useEffect, useState, useCallback } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import type { Car, MainLineState, TestArea, MaintenanceUnit, WeeklySchedule, StatusColors } from '@/types'
+import type { Car, MainLineState, TestArea, MaintenanceUnit, WeeklySchedule, StatusColors, BulletinData } from '@/types'
 
 interface AppState {
   cars: Record<string, Car>
@@ -13,6 +13,7 @@ interface AppState {
   statusColors: StatusColors
   showMaintenancePanel: boolean
   visibleTestAreas: number   // 顯示幾個測試區 (0~6)
+  bulletin: BulletinData
   userRole: 'admin' | 'guest'
   userEmail: string
   highlightedCarId: string | null
@@ -31,6 +32,7 @@ interface AppActions {
   setShowMaintenancePanel: (show: boolean) => void
   setVisibleTestAreas: (count: number) => void
   setHighlightedCarId: (id: string | null) => void
+  updateBulletin: (updates: Partial<BulletinData>) => Promise<void>
   saveSnapshot: (label: string) => Promise<void>
   logOperation: (action: string, carId?: string, from?: string, to?: string, detail?: string) => Promise<void>
 }
@@ -53,6 +55,8 @@ export function AppProvider({ children, userRole, userEmail }: {
   const [statusColors, setStatusColors] = useState<StatusColors>({
     available_regular: '#3B82F6',
     available_crystal: '#EAB308',
+    available_shuangwo: '#9CA3AF',
+    available_dong: '#9CA3AF',
     maintenance_vehicle: '#6B7280',
     unavailable: '#EF4444',
     scrapped: '#111827',
@@ -62,6 +66,7 @@ export function AppProvider({ children, userRole, userEmail }: {
   })
   const [showMaintenancePanel, setShowMaintenancePanel] = useState(false)
   const [visibleTestAreas, setVisibleTestAreas] = useState(3)
+  const [bulletin, setBulletin] = useState<BulletinData>({ title: '佈告欄', date: '', content: '' })
   const [highlightedCarId, setHighlightedCarId] = useState<string | null>(null)
 
   // 初始化載入資料
@@ -78,6 +83,7 @@ export function AppProvider({ children, userRole, userEmail }: {
       { data: muData },
       { data: wsData },
       { data: scData },
+      { data: bulletinData },
     ] = await Promise.all([
       supabase.from('cars').select('*'),
       supabase.from('main_line').select('*').single(),
@@ -85,6 +91,7 @@ export function AppProvider({ children, userRole, userEmail }: {
       supabase.from('maintenance_units').select('*').order('id'),
       supabase.from('weekly_schedule').select('*').single(),
       supabase.from('status_colors').select('*').single(),
+      supabase.from('bulletin_board').select('title,date,content').single(),
     ])
 
     if (carsData) {
@@ -100,8 +107,13 @@ export function AppProvider({ children, userRole, userEmail }: {
       setWeeklySchedule(days)
     }
     if (scData) {
-      const { id, updated_at, ...colors } = scData
-      setStatusColors(colors as StatusColors)
+      const { id, updated_at, ...rawColors } = scData
+      // 合併而非取代，確保 DB 缺少的欄位保留本地預設值
+      const validColors = Object.fromEntries(Object.entries(rawColors).filter(([, v]) => v != null))
+      setStatusColors(prev => ({ ...prev, ...validColors } as StatusColors))
+    }
+    if (bulletinData) {
+      setBulletin({ title: bulletinData.title ?? '佈告欄', date: bulletinData.date ?? '', content: bulletinData.content ?? '' })
     }
   }
 
@@ -133,8 +145,13 @@ export function AppProvider({ children, userRole, userEmail }: {
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'status_colors' }, (payload) => {
         const sc = payload.new as Record<string, unknown>
-        const { id, updated_at, ...colors } = sc
-        setStatusColors(colors as unknown as StatusColors)
+        const { id, updated_at, ...rawColors } = sc
+        const validColors = Object.fromEntries(Object.entries(rawColors).filter(([, v]) => v != null))
+        setStatusColors(prev => ({ ...prev, ...validColors } as StatusColors))
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bulletin_board' }, (payload) => {
+        const b = payload.new as Record<string, unknown>
+        setBulletin({ title: (b.title as string) ?? '佈告欄', date: (b.date as string) ?? '', content: (b.content as string) ?? '' })
       })
       .subscribe()
 
@@ -346,6 +363,12 @@ export function AppProvider({ children, userRole, userEmail }: {
     }).eq('id', 1)
   }, [isAdmin, supabase])
 
+  const updateBulletin = useCallback(async (updates: Partial<BulletinData>) => {
+    if (!isAdmin) return
+    setBulletin(prev => ({ ...prev, ...updates }))
+    await supabase.from('bulletin_board').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', 1)
+  }, [isAdmin, supabase])
+
   const saveSnapshot = useCallback(async (label: string) => {
     if (!isAdmin) return
     const [{ data: carsData }, { data: mlData }, { data: taData }, { data: muData }, { data: wsData }] = await Promise.all([
@@ -372,12 +395,12 @@ export function AppProvider({ children, userRole, userEmail }: {
   return (
     <AppContext.Provider value={{
       cars, mainLine, testAreas, maintenanceUnits, weeklySchedule, statusColors,
-      showMaintenancePanel, visibleTestAreas, userRole, userEmail, highlightedCarId,
+      showMaintenancePanel, visibleTestAreas, bulletin, userRole, userEmail, highlightedCarId,
       moveCar, updateCarStatus, setReferencecar, updateMainLineMode,
       updateMainLinePosition, extractCarsFrom130To108,
       updateTestArea, updateMaintenanceUnit, updateWeeklySchedule,
       setShowMaintenancePanel, setVisibleTestAreas, setHighlightedCarId,
-      saveSnapshot, logOperation,
+      updateBulletin, saveSnapshot, logOperation,
     }}>
       {children}
     </AppContext.Provider>
@@ -406,6 +429,8 @@ export function useCarColor(carId: string) {
 
   // 正常可用時顯示車型色
   if (car.type === 'crystal') return statusColors.available_crystal
+  if (car.type === 'shuangwo') return statusColors.available_shuangwo
+  if (car.type === 'dong') return statusColors.available_dong
   if (car.type === 'maintenance_vehicle') return statusColors.maintenance_vehicle
   return statusColors.available_regular
 }

@@ -1,5 +1,5 @@
 // 車型屬性（永久固定）
-export type CarType = 'regular' | 'crystal' | 'maintenance_vehicle'
+export type CarType = 'regular' | 'crystal' | 'maintenance_vehicle' | 'shuangwo' | 'dong'
 
 // 車廂運作狀態
 export type CarStatus =
@@ -66,6 +66,8 @@ export interface WeeklySchedule {
 export interface StatusColors {
   available_regular: string   // 一般車可用
   available_crystal: string   // 水晶車可用
+  available_shuangwo: string  // 雙握車可用
+  available_dong: string      // 洞車可用
   maintenance_vehicle: string // 維修車
   unavailable: string
   scrapped: string
@@ -102,3 +104,10 @@ export interface OperationLog {
 
 // 使用者角色（存在 user metadata）
 export type UserRole = 'admin' | 'guest'
+
+// 佈告欄（交接事項）
+export interface BulletinData {
+  title: string
+  date: string
+  content: string
+}

@@ -6,29 +6,51 @@ import { useApp } from '@/lib/store'
 import { StorageArea } from './StorageArea'
 import { MainLineLoop } from './MainLineLoop'
 
-// 收折時顯示的窄欄（仍保持 zhuanjiaoer 可拖入）
+// 收折時顯示的窄欄（兩個儲車區都保持可拖入）
 function CollapsedStorageStrip() {
   const { cars } = useApp()
-  const { isOver, setNodeRef } = useDroppable({
+  const { isOver: isOverZje, setNodeRef: zjeRef } = useDroppable({
     id: 'storage_zhuanjiaoer',
     data: { location: 'zhuanjiaoer' },
   })
-  const count = Object.values(cars).filter(c => c.location === 'zhuanjiaoer').length
+  const { isOver: isOverMk, setNodeRef: mkRef } = useDroppable({
+    id: 'storage_maokong',
+    data: { location: 'maokong' },
+  })
+  const countZje = Object.values(cars).filter(c => c.location === 'zhuanjiaoer').length
+  const countMk = Object.values(cars).filter(c => c.location === 'maokong').length
 
   return (
-    <div
-      ref={setNodeRef}
-      className={`flex-1 flex flex-col items-center justify-start pt-3 gap-2 transition-colors ${isOver ? 'bg-blue-50' : ''}`}
-    >
-      <span className="text-[8px] text-slate-500 font-semibold" style={{ writingMode: 'vertical-rl', letterSpacing: '0.1em' }}>
-        轉角二站
-      </span>
-      <span className="text-xs text-slate-700 font-bold bg-slate-100 rounded w-6 h-6 flex items-center justify-center">
-        {count}
-      </span>
-      {isOver && (
-        <span className="text-[7px] text-blue-500 font-medium" style={{ writingMode: 'vertical-rl' }}>放開</span>
-      )}
+    <div className="flex-1 flex flex-col">
+      <div
+        ref={zjeRef}
+        className={`flex-1 flex flex-col items-center justify-start pt-3 gap-2 transition-colors ${isOverZje ? 'bg-blue-50' : ''}`}
+      >
+        <span className="text-[8px] text-slate-500 font-semibold" style={{ writingMode: 'vertical-rl', letterSpacing: '0.1em' }}>
+          轉角二站
+        </span>
+        <span className="text-xs text-slate-700 font-bold bg-slate-100 rounded w-6 h-6 flex items-center justify-center">
+          {countZje}
+        </span>
+        {isOverZje && (
+          <span className="text-[7px] text-blue-500 font-medium" style={{ writingMode: 'vertical-rl' }}>放開</span>
+        )}
+      </div>
+      <div className="border-t border-slate-200 mx-1" />
+      <div
+        ref={mkRef}
+        className={`flex-1 flex flex-col items-center justify-start pt-3 gap-2 transition-colors ${isOverMk ? 'bg-blue-50' : ''}`}
+      >
+        <span className="text-[8px] text-slate-500 font-semibold" style={{ writingMode: 'vertical-rl', letterSpacing: '0.1em' }}>
+          貓空站
+        </span>
+        <span className="text-xs text-slate-700 font-bold bg-slate-100 rounded w-6 h-6 flex items-center justify-center">
+          {countMk}
+        </span>
+        {isOverMk && (
+          <span className="text-[7px] text-blue-500 font-medium" style={{ writingMode: 'vertical-rl' }}>放開</span>
+        )}
+      </div>
     </div>
   )
 }
@@ -67,6 +89,7 @@ export function MainLayout() {
         {open ? (
           <div className="flex flex-col gap-2 p-2 overflow-y-auto flex-1">
             <StorageArea location="zhuanjiaoer" label="轉角二站 儲車區" maxSlots={40} collapsible />
+            <StorageArea location="maokong" label="貓空站 儲車區" maxSlots={10} collapsible />
           </div>
         ) : (
           <CollapsedStorageStrip />

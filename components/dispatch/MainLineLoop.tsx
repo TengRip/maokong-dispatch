@@ -4,10 +4,10 @@ import { useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { useApp } from '@/lib/store'
 import { CarTag } from './CarTag'
-import { StorageArea } from './StorageArea'
 import { WeeklySchedulePanel } from './WeeklySchedulePanel'
 import { MaintenancePanel } from './MaintenancePanel'
 import { TestAreaPanel } from './TestAreaPanel'
+import { BulletinBoard } from './BulletinBoard'
 
 // 格子尺寸
 const SW = 34
@@ -231,7 +231,7 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
           {/* 中間面板（可垂直捲動） */}
           <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
 
-            {/* 週排程 + 維修排程 + 貓空站（橫排，超寬可橫向捲） */}
+            {/* 週排程 + 維修排程 + 佈告欄（橫排，超寬可橫向捲） */}
             <div className="flex items-start gap-4 px-3 py-3 flex-shrink-0 overflow-x-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
               <div style={{ pointerEvents: 'auto' }} className="shrink-0">
                 <WeeklySchedulePanel />
@@ -239,8 +239,8 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
               <div style={{ pointerEvents: 'auto' }} className="shrink-0">
                 <MaintenancePanel mode="inline" />
               </div>
-              <div style={{ pointerEvents: 'auto', width: 160 }} className="shrink-0">
-                <StorageArea location="maokong" label="貓空站 儲車區" maxSlots={10} />
+              <div style={{ pointerEvents: 'auto' }} className="shrink-0">
+                <BulletinBoard />
               </div>
             </div>
 
