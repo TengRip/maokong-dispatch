@@ -254,7 +254,7 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
               <div style={{ pointerEvents: 'auto' }} className="shrink-0">
                 <MaintenancePanel mode="inline" />
               </div>
-              <div style={{ pointerEvents: 'auto' }} className="shrink-0">
+              <div style={{ pointerEvents: 'auto' }} className="flex-1 min-w-0">
                 <BulletinBoard />
               </div>
             </div>

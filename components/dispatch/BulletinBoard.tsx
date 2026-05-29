@@ -31,7 +31,7 @@ export function BulletinBoard() {
   }
 
   return (
-    <div className="bg-amber-50 rounded-lg border border-amber-200 p-2 w-44 flex flex-col gap-1.5 flex-shrink-0">
+    <div className="bg-amber-50 rounded-lg border border-amber-200 p-2 w-full flex flex-col gap-1.5">
 
       {/* 標題列 */}
       <div className="flex items-center gap-1 border-b border-amber-200 pb-1.5">
@@ -81,7 +81,7 @@ export function BulletinBoard() {
           onChange={e => { setContentVal(e.target.value); debouncedSave({ content: e.target.value }) }}
           placeholder={isAdmin ? '輸入交接備註…' : '（無內容）'}
           disabled={!isAdmin}
-          rows={6}
+          rows={8}
           className="w-full text-[10px] bg-white border border-amber-200 rounded px-1.5 py-1 text-slate-700 outline-none focus:border-amber-400 resize-none placeholder-amber-300 disabled:bg-transparent disabled:border-transparent leading-relaxed"
         />
       </div>
