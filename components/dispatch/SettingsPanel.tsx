@@ -209,8 +209,6 @@ function ColorsTab() {
   const labels: Record<string, string> = {
     available_regular: '可用車（一般車）',
     available_crystal: '可用車（水晶車）',
-    available_shuangwo: '可用車（雙握車）',
-    available_dong: '可用車（洞車）',
     maintenance_vehicle: '維修車',
     unavailable: '不可用車',
     scrapped: '報廢車',

@@ -66,7 +66,7 @@ export function AppProvider({ children, userRole, userEmail }: {
   })
   const [showMaintenancePanel, setShowMaintenancePanel] = useState(false)
   const [visibleTestAreas, setVisibleTestAreas] = useState(3)
-  const [bulletin, setBulletin] = useState<BulletinData>({ title: '佈告欄', date: '', content: '' })
+  const [bulletin, setBulletin] = useState<BulletinData>({ title: '佈告欄', date: '', content: '', maintenance_notes: '' })
   const [highlightedCarId, setHighlightedCarId] = useState<string | null>(null)
 
   // 初始化載入資料
@@ -91,7 +91,7 @@ export function AppProvider({ children, userRole, userEmail }: {
       supabase.from('maintenance_units').select('*').order('id'),
       supabase.from('weekly_schedule').select('*').single(),
       supabase.from('status_colors').select('*').single(),
-      supabase.from('bulletin_board').select('title,date,content').single(),
+      supabase.from('bulletin_board').select('title,date,content,maintenance_notes').single(),
     ])
 
     if (carsData) {
@@ -113,7 +113,12 @@ export function AppProvider({ children, userRole, userEmail }: {
       setStatusColors(prev => ({ ...prev, ...validColors } as StatusColors))
     }
     if (bulletinData) {
-      setBulletin({ title: bulletinData.title ?? '佈告欄', date: bulletinData.date ?? '', content: bulletinData.content ?? '' })
+      setBulletin({
+        title: bulletinData.title ?? '佈告欄',
+        date: bulletinData.date ?? '',
+        content: bulletinData.content ?? '',
+        maintenance_notes: bulletinData.maintenance_notes ?? '',
+      })
     }
   }
 
@@ -151,7 +156,12 @@ export function AppProvider({ children, userRole, userEmail }: {
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'bulletin_board' }, (payload) => {
         const b = payload.new as Record<string, unknown>
-        setBulletin({ title: (b.title as string) ?? '佈告欄', date: (b.date as string) ?? '', content: (b.content as string) ?? '' })
+        setBulletin({
+          title: (b.title as string) ?? '佈告欄',
+          date: (b.date as string) ?? '',
+          content: (b.content as string) ?? '',
+          maintenance_notes: (b.maintenance_notes as string) ?? '',
+        })
       })
       .subscribe()
 

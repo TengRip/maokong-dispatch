@@ -5,6 +5,7 @@ import { useDroppable } from '@dnd-kit/core'
 import { useApp } from '@/lib/store'
 import { StorageArea } from './StorageArea'
 import { MainLineLoop } from './MainLineLoop'
+import { MaintenanceNotesSidebar } from './MaintenanceNotesSidebar'
 
 // 收折時顯示的窄欄（兩個儲車區都保持可拖入）
 function CollapsedStorageStrip() {
@@ -90,6 +91,7 @@ export function MainLayout() {
           <div className="flex flex-col gap-2 p-2 overflow-y-auto flex-1">
             <StorageArea location="zhuanjiaoer" label="轉角二站 儲車區" maxSlots={40} collapsible />
             <StorageArea location="maokong" label="貓空站 儲車區" maxSlots={10} collapsible />
+            <MaintenanceNotesSidebar />
           </div>
         ) : (
           <CollapsedStorageStrip />

@@ -203,6 +203,7 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
           width: loopWidth - 2 * RW,
           height: loopHeight - 2 * RH,
           background: isCenterOver ? 'rgba(219,234,254,0.7)' : 'rgba(248,250,252,0.5)',
+          border: '1.5px solid rgba(148,163,184,0.5)',
           transition: 'background 0.15s',
           display: 'flex',
           flexDirection: 'column',

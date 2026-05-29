@@ -110,4 +110,5 @@ export interface BulletinData {
   title: string
   date: string
   content: string
+  maintenance_notes: string
 }
