@@ -244,7 +244,7 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
           </div>
 
           {/* 中間面板（可垂直捲動） */}
-          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', minWidth: 0, border: '3px solid #94afc4', borderRadius: '6px' }}>
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', minWidth: 0, border: '3px solid #94afc4', borderRadius: '6px', marginBottom: 40 }}>
 
             {/* 週排程 + 維修排程 + 佈告欄（橫排，超寬可橫向捲） */}
             <div className="flex items-start gap-4 px-3 py-3 flex-shrink-0 overflow-x-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
