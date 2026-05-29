@@ -3,6 +3,7 @@
 import { useState, useCallback } from 'react'
 import { useApp } from '@/lib/store'
 import { createClient } from '@/lib/supabase/client'
+import type { Car, TestArea } from '@/types'
 
 const LOCATION_LABELS: Record<string, string> = {
   zhuanjiaoer:    '轉角二站儲車區',
@@ -17,7 +18,7 @@ const DAY_LABELS: Record<string, string> = {
   monday: '一', tuesday: '二', wednesday: '三', thursday: '四', friday: '五',
 }
 
-type IssueType = 'unassigned' | 'orphan_main' | 'ghost_main' | 'orphan_test' | 'orphan_weekly' | 'duplicate'
+type IssueType = 'unassigned' | 'orphan_main' | 'ghost_main' | 'orphan_test' | 'orphan_weekly' | 'ghost_weekly' | 'ghost_test' | 'duplicate'
 
 interface Issue {
   carId: string
@@ -101,29 +102,77 @@ function runScan(
     }
   })
 
+  // 週排程幽靈：weekly_schedule slot 有車號，但 cars[id].location != weekly_schedule
+  Object.entries(weeklySchedule).forEach(([day, slots]) => {
+    (slots as (string | null)[]).forEach((cid, i) => {
+      if (cid && cars[cid] && cars[cid].location !== 'weekly_schedule') {
+        if (!issues.find(x => x.carId === cid && x.type === 'ghost_weekly')) {
+          issues.push({ carId: cid, type: 'ghost_weekly', detail: `週排程幽靈：週${DAY_LABELS[day] ?? day}[${i + 1}] 有此車，但 cars 表位置為 ${LOCATION_LABELS[cars[cid].location] ?? cars[cid].location}` })
+        }
+      }
+    })
+  })
+
+  // 測試區幽靈：test_area slot 有車號，但 cars[id].location != test_area
+  testAreas.forEach(a => {
+    a.slots.forEach((cid, i) => {
+      if (cid && cars[cid] && cars[cid].location !== 'test_area') {
+        if (!issues.find(x => x.carId === cid && x.type === 'ghost_test')) {
+          issues.push({ carId: cid, type: 'ghost_test', detail: `測試區幽靈：${a.name}[${i + 1}] 有此車，但 cars 表位置為 ${LOCATION_LABELS[cars[cid].location] ?? cars[cid].location}` })
+        }
+      }
+    })
+  })
+
   return { counts, total: Object.values(counts).reduce((a, b) => a + b, 0), issues, ghostPositions }
 }
 
 export function DiagnosticsPanel() {
-  const { cars, mainLine, testAreas, weeklySchedule, userRole } = useApp()
+  const { userRole } = useApp()
   const [open, setOpen] = useState(false)
   const [result, setResult] = useState<ScanResult | null>(null)
   const [fixing, setFixing] = useState(false)
+  const [scanning, setScanning] = useState(false)
   const [fixMsg, setFixMsg] = useState('')
   const supabase = createClient()
 
   if (userRole !== 'admin') return null
 
-  const handleScan = useCallback(() => {
+  // 每次都直接從 DB 撈最新資料掃描，不依賴可能過時的 React state
+  const fetchAndScan = useCallback(async () => {
+    setScanning(true)
     setFixMsg('')
-    setResult(runScan(cars, mainLine, testAreas, weeklySchedule))
-  }, [cars, mainLine, testAreas, weeklySchedule])
+
+    const [
+      { data: carsData },
+      { data: mlData },
+      { data: taData },
+      { data: wsData },
+    ] = await Promise.all([
+      supabase.from('cars').select('*'),
+      supabase.from('main_line').select('*').single(),
+      supabase.from('test_areas').select('*').order('id'),
+      supabase.from('weekly_schedule').select('*').single(),
+    ])
+
+    if (!carsData || !mlData) { setScanning(false); return }
+
+    const carsMap: Record<string, Car> = {}
+    carsData.forEach((c: Car) => { carsMap[c.id] = c })
+
+    const ml = { mode: mlData.mode as 108 | 130, positions: mlData.positions as (string | null)[] }
+    const { id: _id, updated_at: _ts, ...days } = (wsData ?? {}) as Record<string, unknown>
+
+    setResult(runScan(carsMap, ml, (taData ?? []) as TestArea[], days as ReturnType<typeof useApp>['weeklySchedule']))
+    setScanning(false)
+  }, [supabase])
 
   const handleOpen = () => {
     setOpen(true)
-    setFixMsg('')
-    setResult(runScan(cars, mainLine, testAreas, weeklySchedule))
+    fetchAndScan()
   }
+
+  const handleScan = () => { fetchAndScan() }
 
   const handleFix = async () => {
     if (!result) return
@@ -140,19 +189,95 @@ export function DiagnosticsPanel() {
         .in('id', [...new Set(toFix)])
     }
 
-    // 清除幽靈：positions 陣列中的異常格位設 null
+    // 清除幽靈：直接從 DB 取最新 positions 再修改，避免用到過時的 React state
     if (result.ghostPositions.length > 0) {
-      const newPositions = [...mainLine.positions]
+      const { data: freshMl } = await supabase.from('main_line').select('positions').single()
+      const newPositions = [...((freshMl?.positions ?? []) as (string | null)[])]
       result.ghostPositions.forEach(i => { newPositions[i] = null })
       await supabase.from('main_line')
         .update({ positions: newPositions, updated_at: new Date().toISOString() })
         .eq('id', 1)
     }
 
+    // 修復週排程幽靈和測試區幽靈：直接清除 slot 中的幽靈車號
+    const ghostWeeklyIds = new Set(result.issues.filter(i => i.type === 'ghost_weekly').map(i => i.carId))
+    const ghostTestIds = new Set(result.issues.filter(i => i.type === 'ghost_test').map(i => i.carId))
+
+    if (ghostWeeklyIds.size > 0) {
+      const { data: freshWsGhost } = await supabase.from('weekly_schedule').select('*').single()
+      if (freshWsGhost) {
+        const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+        const wsUpdates: Record<string, unknown> = {}
+        for (const day of DAYS) {
+          const slots = [...((freshWsGhost[day as keyof typeof freshWsGhost] ?? Array(10).fill(null)) as (string | null)[])]
+          const cleaned = slots.map(cid => (cid && ghostWeeklyIds.has(cid) ? null : cid))
+          if (cleaned.some((s, i) => s !== slots[i])) wsUpdates[day] = cleaned
+        }
+        if (Object.keys(wsUpdates).length > 0)
+          await supabase.from('weekly_schedule').update({ ...wsUpdates, updated_at: new Date().toISOString() }).eq('id', 1)
+      }
+    }
+
+    if (ghostTestIds.size > 0) {
+      const { data: freshTaGhost } = await supabase.from('test_areas').select('*').order('id')
+      for (const ta of (freshTaGhost ?? [])) {
+        const slots = (ta.slots as (string | null)[]).map(cid => (cid && ghostTestIds.has(cid) ? null : cid))
+        if (slots.some((s: string | null, i: number) => s !== (ta.slots as (string | null)[])[i]))
+          await supabase.from('test_areas').update({ slots, updated_at: new Date().toISOString() }).eq('id', ta.id)
+      }
+    }
+
+    // 修復重複（duplicate）：從 DB 取最新 slot 資料，保留每台車的第一個出現，其餘清除
+    const dupCarIds = [...new Set(result.issues.filter(i => i.type === 'duplicate').map(i => i.carId))]
+    if (dupCarIds.length > 0) {
+      const [{ data: freshWs }, { data: freshTa }, { data: freshMlDup }] = await Promise.all([
+        supabase.from('weekly_schedule').select('*').single(),
+        supabase.from('test_areas').select('*').order('id'),
+        supabase.from('main_line').select('positions').single(),
+      ])
+
+      for (const carId of dupCarIds) {
+        let kept = false
+
+        // 正線 positions
+        const mlPos = [...((freshMlDup?.positions ?? []) as (string | null)[])]
+        let mlDirty = false
+        mlPos.forEach((cid, i) => {
+          if (cid === carId) { if (!kept) kept = true; else { mlPos[i] = null; mlDirty = true } }
+        })
+        if (mlDirty) await supabase.from('main_line').update({ positions: mlPos, updated_at: new Date().toISOString() }).eq('id', 1)
+
+        // 測試區 slots
+        for (const ta of (freshTa ?? [])) {
+          const slots = [...(ta.slots as (string | null)[])]
+          let dirty = false
+          slots.forEach((cid, i) => {
+            if (cid === carId) { if (!kept) kept = true; else { slots[i] = null; dirty = true } }
+          })
+          if (dirty) await supabase.from('test_areas').update({ slots, updated_at: new Date().toISOString() }).eq('id', ta.id)
+        }
+
+        // 週排程各天
+        if (freshWs) {
+          const DAYS = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+          const wsUpdates: Record<string, unknown> = {}
+          for (const day of DAYS) {
+            const slots = [...((freshWs[day as keyof typeof freshWs] ?? Array(10).fill(null)) as (string | null)[])]
+            let dirty = false
+            slots.forEach((cid, i) => {
+              if (cid === carId) { if (!kept) kept = true; else { slots[i] = null; dirty = true } }
+            })
+            if (dirty) wsUpdates[day] = slots
+          }
+          if (Object.keys(wsUpdates).length > 0)
+            await supabase.from('weekly_schedule').update({ ...wsUpdates, updated_at: new Date().toISOString() }).eq('id', 1)
+        }
+      }
+    }
+
     setFixing(false)
-    setFixMsg(`✓ 已修復 ${toFix.length} 台異常車廂，正線幽靈已清除 ${result.ghostPositions.length} 格`)
-    // 稍等 Realtime 更新後重新掃描
-    setTimeout(() => setResult(runScan(cars, mainLine, testAreas, weeklySchedule)), 800)
+    setFixMsg(`✓ 已修復 ${toFix.length} 台孤兒車廂、清除 ${result.ghostPositions.length} 個幽靈格位、修正 ${dupCarIds.length} 台重複車廂`)
+    setResult(prev => prev ? { ...prev, issues: [], ghostPositions: [] } : prev)
   }
 
   const EXPECTED = 149
@@ -163,6 +288,8 @@ export function DiagnosticsPanel() {
     ghost_main:     'text-orange-600 bg-orange-50',
     orphan_test:    'text-yellow-700 bg-yellow-50',
     orphan_weekly:  'text-yellow-700 bg-yellow-50',
+    ghost_weekly:   'text-orange-600 bg-orange-50',
+    ghost_test:     'text-orange-600 bg-orange-50',
     duplicate:      'text-purple-600 bg-purple-50',
   }
 
@@ -184,9 +311,9 @@ export function DiagnosticsPanel() {
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
               <h2 className="text-slate-800 font-bold">🔍 車廂總覽診斷</h2>
               <div className="flex items-center gap-2">
-                <button onClick={handleScan}
-                  className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded px-3 py-1.5">
-                  重新掃描
+                <button onClick={handleScan} disabled={scanning}
+                  className="text-xs bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 rounded px-3 py-1.5">
+                  {scanning ? '掃描中…' : '重新掃描'}
                 </button>
                 <button onClick={() => setOpen(false)}
                   className="text-slate-400 hover:text-slate-700 text-xl leading-none ml-2">×</button>
@@ -256,7 +383,7 @@ export function DiagnosticsPanel() {
                   disabled={fixing}
                   className="bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded px-4 py-2 text-sm font-medium"
                 >
-                  {fixing ? '修復中…' : `🔧 一鍵修復（${result.issues.filter(i => ['unassigned','orphan_main','orphan_test','orphan_weekly','ghost_main'].includes(i.type)).length} 筆）`}
+                  {fixing ? '修復中…' : `🔧 一鍵修復（${result.issues.length} 筆）`}
                 </button>
                 {fixMsg && <span className="text-green-600 text-xs">{fixMsg}</span>}
                 <span className="text-slate-400 text-xs ml-auto">異常車廂將移回轉角二站</span>

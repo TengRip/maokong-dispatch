@@ -24,6 +24,7 @@ export function CarTag({ carId, draggableId, compact = false, noContextMenu = fa
     cars, mainLine, testAreas, weeklySchedule,
     userRole, moveCar, updateCarStatus, setReferencecar,
     updateMainLinePosition, updateTestArea, updateWeeklySchedule,
+    highlightedCarId,
   } = useApp()
   const color = useCarColor(carId)
   const car = cars[carId]
@@ -77,13 +78,12 @@ export function CarTag({ carId, draggableId, compact = false, noContextMenu = fa
         if (idx !== -1) { newSlots[idx] = null; await updateTestArea(fromArea.id, { slots: newSlots }) }
       }
     } else if (car.location === 'weekly_schedule') {
+      // 清除該車廂在所有週排程天數中的全部出現（含重複），不用 break
       for (const [day, slots] of Object.entries(weeklySchedule)) {
-        const idx = (slots as (string | null)[]).indexOf(carId)
-        if (idx !== -1) {
-          const newSlots = [...slots] as (string | null)[]
-          newSlots[idx] = null
+        const daySlots = slots as (string | null)[]
+        if (daySlots.includes(carId)) {
+          const newSlots = daySlots.map(s => (s === carId ? null : s))
           await updateWeeklySchedule(day, newSlots)
-          break
         }
       }
     }
@@ -92,7 +92,7 @@ export function CarTag({ carId, draggableId, compact = false, noContextMenu = fa
 
   const handleSetReference = async () => {
     setMenu(null)
-    await setReferencecar(carId)
+    await setReferencecar(carId, car.is_reference)
   }
 
   const handleStatus = async (status: 'available' | 'unavailable' | 'controlled' | 'other') => {
@@ -117,11 +117,12 @@ export function CarTag({ carId, draggableId, compact = false, noContextMenu = fa
           border border-white/20 shadow-sm transition-opacity
           ${compact ? 'text-[10px] w-full h-full' : 'text-xs px-2 py-1 min-w-[2.5rem]'}
           ${isDragging ? 'z-50' : ''}
+          ${highlightedCarId === carId ? 'car-highlight' : ''}
         `}
       >
         {carId}
         {car.is_reference && (
-          <span className="absolute -top-1.5 -right-1 text-[8px] leading-none text-yellow-300 font-bold">★</span>
+          <span className="absolute -top-2 -right-1.5 text-sm leading-none text-yellow-400 font-black drop-shadow">★</span>
         )}
       </div>
 
@@ -138,10 +139,14 @@ export function CarTag({ carId, draggableId, compact = false, noContextMenu = fa
             車號 {carId}
           </div>
 
-          {/* 移至轉角二站 */}
+          {/* 移至轉角二站（已在轉角二站則反白停用） */}
           <button
-            onClick={handleMoveToStorage}
-            className="w-full text-left px-3 py-1.5 text-xs hover:bg-blue-50 hover:text-blue-700 flex items-center gap-2"
+            onClick={car.location !== 'zhuanjiaoer' ? handleMoveToStorage : undefined}
+            disabled={car.location === 'zhuanjiaoer'}
+            className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2
+              ${car.location === 'zhuanjiaoer'
+                ? 'text-slate-300 cursor-not-allowed'
+                : 'hover:bg-blue-50 hover:text-blue-700'}`}
           >
             ← 移至轉角二站
           </button>

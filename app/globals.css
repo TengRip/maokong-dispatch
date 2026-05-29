@@ -136,3 +136,16 @@
 ::-webkit-scrollbar-track { background: #e2e8f0; }
 ::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+/* 搜尋加亮動畫 */
+@keyframes car-highlight-pulse {
+  0%, 100% { outline-color: transparent; box-shadow: none; }
+  50% { outline-color: #ef4444; box-shadow: 0 0 8px 3px rgba(239, 68, 68, 0.55); }
+}
+.car-highlight {
+  outline: 2.5px solid #ef4444;
+  outline-offset: 2px;
+  animation: car-highlight-pulse 0.5s ease-in-out 4;
+  position: relative;
+  z-index: 10;
+}

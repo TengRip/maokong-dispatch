@@ -87,6 +87,9 @@ export function DragHandler({ children }: { children: React.ReactNode }) {
     toAreaId?: number,
     toDay?: string,
   ) => {
+    // 追蹤清除來源後的週排程狀態，避免 stale closure 造成同車重複顯示
+    let latestWeeklySchedule = weeklySchedule
+
     // ── 清除來源槽位 ──────────────────────────────────
     if (fromLocation === 'main_line') {
       const idx = mainLine.positions.indexOf(carId)
@@ -107,6 +110,7 @@ export function DragHandler({ children }: { children: React.ReactNode }) {
           const newSlots = [...slots] as (string | null)[]
           newSlots[idx] = null
           await updateWeeklySchedule(day, newSlots)
+          latestWeeklySchedule = { ...latestWeeklySchedule, [day]: newSlots }
           break
         }
       }
@@ -125,7 +129,8 @@ export function DragHandler({ children }: { children: React.ReactNode }) {
       }
 
     } else if (toLocation === 'weekly_schedule' && toDay && toSlot !== undefined) {
-      const slots = [...(weeklySchedule[toDay] ?? Array(10).fill(null))] as (string | null)[]
+      // 使用已清除來源後的最新版本，避免重複寫入
+      const slots = [...(latestWeeklySchedule[toDay] ?? Array(10).fill(null))] as (string | null)[]
       slots[toSlot] = carId
       await updateWeeklySchedule(toDay, slots)
     }

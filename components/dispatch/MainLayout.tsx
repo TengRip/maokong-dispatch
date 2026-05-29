@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { useApp } from '@/lib/store'
 import { StorageArea } from './StorageArea'
@@ -35,6 +35,19 @@ function CollapsedStorageStrip() {
 
 export function MainLayout() {
   const [open, setOpen] = useState(true)
+  const centerRef = useRef<HTMLDivElement>(null)
+  const [centerSize, setCenterSize] = useState({ width: 0, height: 0 })
+
+  useEffect(() => {
+    const el = centerRef.current
+    if (!el) return
+    const obs = new ResizeObserver(entries => {
+      const { width, height } = entries[0].contentRect
+      setCenterSize({ width, height })
+    })
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
 
   return (
     <div className="flex flex-1 overflow-hidden">
@@ -61,9 +74,9 @@ export function MainLayout() {
 
       </div>
 
-      {/* 中央：正線迴圈 */}
-      <div className="flex-1 flex items-start justify-start p-4 overflow-auto bg-slate-100">
-        <MainLineLoop />
+      {/* 中央：正線迴圈，依容器高寬自動縮放 */}
+      <div ref={centerRef} className="flex-1 flex items-start justify-start p-4 overflow-auto bg-slate-100">
+        <MainLineLoop availableHeight={centerSize.height} availableWidth={centerSize.width} />
       </div>
 
     </div>

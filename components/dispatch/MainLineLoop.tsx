@@ -17,10 +17,10 @@ const RW = SW + GAP
 const RH = SH + GAP
 
 function getSegments(mode: 108 | 130) {
-  // 108 = 26+28+26+28 ; 130 = 32+33+32+33
+  // 108 = 33+21+33+21（橫向長方形）; 130 = 40+25+40+25
   return mode === 108
-    ? { top: 26, right: 28, bottom: 26, left: 28 }
-    : { top: 32, right: 33, bottom: 32, left: 33 }
+    ? { top: 33, right: 21, bottom: 33, left: 21 }
+    : { top: 40, right: 25, bottom: 40, left: 25 }
 }
 
 function calcDims(top: number, side: number) {
@@ -84,13 +84,26 @@ function LoopSlot({ index, carId }: { index: number; carId: string | null }) {
   )
 }
 
-export function MainLineLoop() {
+interface MainLineLoopProps {
+  availableHeight: number
+  availableWidth: number
+}
+
+export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopProps) {
   const { mainLine, userRole, updateMainLineMode, extractCarsFrom130To108 } = useApp()
   const { mode, positions } = mainLine
   const seg = getSegments(mode)
   const isAdmin = userRole === 'admin'
 
   const { loopWidth, loopHeight } = calcDims(seg.top, seg.right)
+
+  // 依可用高度與寬度同時縮放，取較小值確保不超出任一方向，最小 0.5
+  const scale = (availableHeight > 0 && availableWidth > 0)
+    ? Math.max(0.5, Math.min(
+        (availableHeight - 16) / loopHeight,
+        (availableWidth - 16) / loopWidth
+      ))
+    : 1
 
   // 逆時針索引：左欄↓ → 下排→ → 右欄↑ → 上排←，slot 1 在左欄最上方
   const leftIdx   = Array.from({ length: seg.left }, (_, i) => i)
@@ -125,16 +138,17 @@ export function MainLineLoop() {
   }
 
   return (
-    <div className="select-none" style={{ position: 'relative', width: loopWidth, height: loopHeight }}>
+    // 外層容器佔用縮放後的實際空間，讓佈局正確對齊
+    <div style={{ width: loopWidth * scale, height: loopHeight * scale, flexShrink: 0 }}>
+    <div className="select-none" style={{
+      position: 'relative', width: loopWidth, height: loopHeight,
+      transform: `scale(${scale})`, transformOrigin: 'top left',
+    }}>
 
-      {/* 外框 SVG */}
+      {/* 外框 SVG（只畫邊框，箭頭另用 HTML 覆蓋） */}
       <svg style={{ position: 'absolute', inset: 0, width: loopWidth, height: loopHeight, overflow: 'visible', pointerEvents: 'none' }}>
         <rect x={SW/2} y={SH/2} width={loopWidth-SW} height={loopHeight-SH}
           fill="none" stroke="#94a3b8" strokeWidth="1.5" rx="6" />
-        <text x={SW/2} y={loopHeight/2-8} textAnchor="middle" fontSize="10" fill="#3b82f6">↓</text>
-        <text x={SW/2} y={loopHeight/2+12} textAnchor="middle" fontSize="8" fill="#3b82f6">去程</text>
-        <text x={loopWidth-SW/2} y={loopHeight/2-8} textAnchor="middle" fontSize="10" fill="#f97316">↑</text>
-        <text x={loopWidth-SW/2} y={loopHeight/2+12} textAnchor="middle" fontSize="8" fill="#f97316">回程</text>
       </svg>
 
       {/* 左側：slot 1 在最上方，由上往下 */}
@@ -165,7 +179,7 @@ export function MainLineLoop() {
         </div>
       ))}
 
-      {/* 中央區塊：flex-col，上方模式控制 + 下方工具面板 */}
+      {/* 中央區塊：上方模式列 + 下方「箭頭 ｜ 面板 ｜ 箭頭」三欄 */}
       <div
         ref={centerRef}
         style={{
@@ -178,10 +192,10 @@ export function MainLineLoop() {
           display: 'flex',
           flexDirection: 'column',
           borderRadius: '4px',
-          overflowY: 'auto',
+          overflow: 'hidden',
         }}
       >
-        {/* 頂列：正線模式切換（原本在外層，現移入） */}
+        {/* 頂列：正線模式切換 */}
         <div style={{ pointerEvents: 'auto', flexShrink: 0 }}
           className="flex items-center gap-3 px-4 py-2 border-b border-slate-200/60"
         >
@@ -202,38 +216,52 @@ export function MainLineLoop() {
           )}
         </div>
 
-        {/* 下方：方向標示 + 貓空站 + 週排程 + 維修排程（頂部對齊） */}
-        <div className="flex items-start gap-4 px-4 py-3 flex-shrink-0 overflow-x-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
+        {/* 主體：[↓去程] ｜ [面板] ｜ [回程↑] */}
+        <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
 
-          {/* 方向標示 */}
-          <div className="text-center pointer-events-none shrink-0 pt-1">
-            <div className="text-blue-500 text-xs font-medium mb-1">↓ 去程</div>
-            <div className="text-slate-400 text-[10px] leading-5">轉角二站 ⇅ 貓空站</div>
-            <div className="text-orange-500 text-xs font-medium mt-1">回程 ↑</div>
+          {/* 左側去程大箭頭 */}
+          <div style={{
+            flexShrink: 0, width: 48,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            pointerEvents: 'none',
+          }}>
+            <span style={{ fontSize: 42, color: '#3b82f6', fontWeight: 900, lineHeight: 1 }}>↓</span>
           </div>
 
-          {/* 貓空站儲車區 */}
-          <div style={{ pointerEvents: 'auto', width: 160 }} className="shrink-0">
-            <StorageArea location="maokong" label="貓空站 儲車區" maxSlots={10} />
+          {/* 中間面板（可垂直捲動） */}
+          <div style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+
+            {/* 週排程 + 維修排程 + 貓空站（橫排，超寬可橫向捲） */}
+            <div className="flex items-start gap-4 px-3 py-3 flex-shrink-0 overflow-x-auto [&::-webkit-scrollbar]:hidden" style={{ scrollbarWidth: 'none' }}>
+              <div style={{ pointerEvents: 'auto' }} className="shrink-0">
+                <WeeklySchedulePanel />
+              </div>
+              <div style={{ pointerEvents: 'auto' }} className="shrink-0">
+                <MaintenancePanel mode="inline" />
+              </div>
+              <div style={{ pointerEvents: 'auto', width: 160 }} className="shrink-0">
+                <StorageArea location="maokong" label="貓空站 儲車區" maxSlots={10} />
+              </div>
+            </div>
+
+            {/* 測試區 */}
+            <div style={{ pointerEvents: 'auto' }}
+              className="px-3 pb-3 border-t border-slate-200/60 pt-2 flex-shrink-0"
+            >
+              <TestAreaPanel mode="inline" />
+            </div>
+
           </div>
 
-          {/* 週排程 */}
-          <div style={{ pointerEvents: 'auto' }} className="shrink-0">
-            <WeeklySchedulePanel />
+          {/* 右側回程大箭頭 */}
+          <div style={{
+            flexShrink: 0, width: 48,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            pointerEvents: 'none',
+          }}>
+            <span style={{ fontSize: 42, color: '#f97316', fontWeight: 900, lineHeight: 1 }}>↑</span>
           </div>
 
-          {/* 維修排程 A B C 橫排 */}
-          <div style={{ pointerEvents: 'auto' }} className="shrink-0">
-            <MaintenancePanel mode="inline" />
-          </div>
-
-        </div>
-
-        {/* 下方：測試區（維修排程下方，換行推擠自動撐高） */}
-        <div style={{ pointerEvents: 'auto' }}
-          className="px-4 pb-3 border-t border-slate-200/60 pt-2 flex-shrink-0"
-        >
-          <TestAreaPanel mode="inline" />
         </div>
 
       </div>
@@ -258,6 +286,8 @@ export function MainLineLoop() {
         </div>
       )}
 
+
+    </div>
     </div>
   )
 }

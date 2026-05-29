@@ -15,12 +15,13 @@ interface AppState {
   visibleTestAreas: number   // 顯示幾個測試區 (0~6)
   userRole: 'admin' | 'guest'
   userEmail: string
+  highlightedCarId: string | null
 }
 
 interface AppActions {
   moveCar: (carId: string, toLocation: string, toSlot?: number, fromLocation?: string, fromSlot?: number) => Promise<void>
   updateCarStatus: (carId: string, status: Car['status']) => Promise<void>
-  setReferencecar: (carId: string) => Promise<void>
+  setReferencecar: (carId: string, isCurrentlyReference?: boolean) => Promise<void>
   updateMainLineMode: (mode: 108 | 130) => Promise<void>
   updateMainLinePosition: (index: number, carId: string | null) => Promise<void>
   extractCarsFrom130To108: (startCarId: string) => Promise<void>
@@ -29,6 +30,7 @@ interface AppActions {
   updateWeeklySchedule: (day: string, slots: (string | null)[]) => Promise<void>
   setShowMaintenancePanel: (show: boolean) => void
   setVisibleTestAreas: (count: number) => void
+  setHighlightedCarId: (id: string | null) => void
   saveSnapshot: (label: string) => Promise<void>
   logOperation: (action: string, carId?: string, from?: string, to?: string, detail?: string) => Promise<void>
 }
@@ -60,6 +62,7 @@ export function AppProvider({ children, userRole, userEmail }: {
   })
   const [showMaintenancePanel, setShowMaintenancePanel] = useState(false)
   const [visibleTestAreas, setVisibleTestAreas] = useState(3)
+  const [highlightedCarId, setHighlightedCarId] = useState<string | null>(null)
 
   // 初始化載入資料
   useEffect(() => {
@@ -203,17 +206,33 @@ export function AppProvider({ children, userRole, userEmail }: {
 
   const updateCarStatus = useCallback(async (carId: string, status: Car['status']) => {
     if (!isAdmin) return
+    setCars(prev => ({ ...prev, [carId]: { ...prev[carId], status } }))
     await supabase.from('cars').update({ status, updated_at: new Date().toISOString() }).eq('id', carId)
     await logOperation('更新狀態', carId, undefined, undefined, status)
   }, [isAdmin, supabase, logOperation])
 
-  const setReferencecar = useCallback(async (carId: string) => {
+  const setReferencecar = useCallback(async (carId: string, isCurrentlyReference = false) => {
     if (!isAdmin) return
-    // 先清除現有基準車
-    await supabase.from('cars').update({ is_reference: false }).eq('is_reference', true)
-    // 設定新基準車
-    await supabase.from('cars').update({ is_reference: true }).eq('id', carId)
-    await logOperation('設定基準車', carId)
+    if (isCurrentlyReference) {
+      // 取消基準車：清除所有基準標記
+      setCars(prev => {
+        const updated: Record<string, Car> = {}
+        Object.entries(prev).forEach(([id, car]) => { updated[id] = { ...car, is_reference: false } })
+        return updated
+      })
+      await supabase.from('cars').update({ is_reference: false }).eq('is_reference', true)
+      await logOperation('取消基準車', carId)
+    } else {
+      // 設定基準車：先清除舊基準，再設定新基準
+      setCars(prev => {
+        const updated: Record<string, Car> = {}
+        Object.entries(prev).forEach(([id, car]) => { updated[id] = { ...car, is_reference: id === carId } })
+        return updated
+      })
+      await supabase.from('cars').update({ is_reference: false }).eq('is_reference', true)
+      await supabase.from('cars').update({ is_reference: true }).eq('id', carId)
+      await logOperation('設定基準車', carId)
+    }
   }, [isAdmin, supabase, logOperation])
 
   const updateMainLineMode = useCallback(async (mode: 108 | 130) => {
@@ -260,29 +279,46 @@ export function AppProvider({ children, userRole, userEmail }: {
     const extractedIds: string[] = []
     const totalSlots = positions.length
 
-    // 環形抽出連續22台
-    for (let i = 0; i < 22; i++) {
+    // 環形抽出 22 台實際列車（空格不計數，繼續往下找直到收滿 22 台）
+    let extracted = 0
+    let i = 0
+    while (extracted < 22 && i < totalSlots) {
       const idx = (startIndex + i) % totalSlots
       if (positions[idx]) {
         extractedIds.push(positions[idx]!)
         positions[idx] = null
+        extracted++
       }
+      i++
     }
 
-    // 重整：移除 null，保持有效車號順序，補回正線
+    // 重整：移除 null，保持有效車號順序
     const remaining = positions.filter(p => p !== null)
     const newPositions = remaining.slice(0, 108)
 
-    await supabase.from('main_line').update({
-      mode: 108,
-      positions: newPositions,
-      updated_at: new Date().toISOString()
-    }).eq('id', 1)
+    // 樂觀更新：立即反映到畫面，不等 Realtime
+    setMainLine({ mode: 108, positions: newPositions })
+    setCars(prev => {
+      const updated = { ...prev }
+      extractedIds.forEach(cid => {
+        if (updated[cid]) updated[cid] = { ...updated[cid], location: 'zhuanjiaoer', location_slot: undefined }
+      })
+      return updated
+    })
 
-    // 抽出的車移到轉角二站
-    for (const cid of extractedIds) {
-      await supabase.from('cars').update({ location: 'zhuanjiaoer', location_slot: null }).eq('id', cid)
-    }
+    // 批次更新 DB（一次送完，比逐一呼叫快）
+    await Promise.all([
+      supabase.from('main_line').update({
+        mode: 108,
+        positions: newPositions,
+        updated_at: new Date().toISOString()
+      }).eq('id', 1),
+      extractedIds.length > 0
+        ? supabase.from('cars')
+            .update({ location: 'zhuanjiaoer', location_slot: null })
+            .in('id', extractedIds)
+        : Promise.resolve(),
+    ])
 
     await logOperation('130→108 抽車', startCarId, 'main_line', 'zhuanjiaoer', `抽出 ${extractedIds.join(', ')}`)
   }, [isAdmin, mainLine.positions, supabase, logOperation])
@@ -336,11 +372,11 @@ export function AppProvider({ children, userRole, userEmail }: {
   return (
     <AppContext.Provider value={{
       cars, mainLine, testAreas, maintenanceUnits, weeklySchedule, statusColors,
-      showMaintenancePanel, visibleTestAreas, userRole, userEmail,
+      showMaintenancePanel, visibleTestAreas, userRole, userEmail, highlightedCarId,
       moveCar, updateCarStatus, setReferencecar, updateMainLineMode,
       updateMainLinePosition, extractCarsFrom130To108,
       updateTestArea, updateMaintenanceUnit, updateWeeklySchedule,
-      setShowMaintenancePanel, setVisibleTestAreas,
+      setShowMaintenancePanel, setVisibleTestAreas, setHighlightedCarId,
       saveSnapshot, logOperation,
     }}>
       {children}

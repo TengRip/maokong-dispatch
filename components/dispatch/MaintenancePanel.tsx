@@ -52,8 +52,8 @@ function MaintenanceUnitCard({ unit }: { unit: MaintenanceUnit }) {
         )}
       </div>
 
-      {/* 已登錄車號 */}
-      <div className="flex flex-wrap gap-1.5 min-h-[28px] mb-2">
+      {/* 已登錄車號（最多三台換行） */}
+      <div className="grid grid-cols-3 gap-1.5 min-h-[28px] mb-2">
         {unit.car_ids.length === 0
           ? <span className="text-slate-400 text-[10px]">（無排程）</span>
           : unit.car_ids.map(cid => (

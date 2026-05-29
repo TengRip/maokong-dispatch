@@ -94,8 +94,8 @@ function TestAreaCard({ area }: { area: TestArea }) {
         )}
       </div>
 
-      {/* 6 個車格（可拖入，或點 + 輸入） */}
-      <div className="flex gap-1 mb-1.5">
+      {/* 6 個車格（3+3 兩排） */}
+      <div className="grid grid-cols-3 gap-1 mb-1.5">
         {area.slots.map((carId, i) => (
           <TestAreaSlot key={i} areaId={area.id} slotIndex={i} carId={carId} />
         ))}

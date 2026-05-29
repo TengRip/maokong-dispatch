@@ -8,7 +8,7 @@ import { SettingsPanel } from './SettingsPanel'
 import { DiagnosticsPanel } from './DiagnosticsPanel'
 
 export function TopBar() {
-  const { userRole, userEmail, saveSnapshot, cars, maintenanceUnits } = useApp()
+  const { userRole, userEmail, saveSnapshot, cars, maintenanceUnits, setHighlightedCarId } = useApp()
   const [searchVal, setSearchVal] = useState('')
   const [searchResult, setSearchResult] = useState<string | null>(null)
   const [snapshotLabel, setSnapshotLabel] = useState('')
@@ -36,6 +36,7 @@ export function TopBar() {
     const extra = car.location_slot !== null && car.location_slot !== undefined ? `（格 ${car.location_slot + 1}）` : ''
     const maintenance = maintenanceCarIds.has(cid) ? ' ⚠ 有維修需求' : ''
     setSearchResult(`${cid}：${loc}${extra}${maintenance}`)
+    setHighlightedCarId(cid)
   }
 
   const handleSaveSnapshot = async () => {
@@ -64,7 +65,7 @@ export function TopBar() {
       <div className="flex items-center gap-1">
         <input
           value={searchVal}
-          onChange={e => { setSearchVal(e.target.value); setSearchResult(null) }}
+          onChange={e => { setSearchVal(e.target.value); setSearchResult(null); if (!e.target.value) setHighlightedCarId(null) }}
           onKeyDown={e => { if (e.key === 'Enter') handleSearch() }}
           placeholder="搜尋車號…"
           className="w-24 text-xs bg-slate-600 border border-slate-500 rounded px-2 py-1 text-white placeholder-slate-400 focus:outline-none focus:border-blue-400"
