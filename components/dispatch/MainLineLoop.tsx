@@ -119,6 +119,21 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
     data: { location: 'main_line', slot: -1 },
   })
 
+  // 計算指定號碼（1-based）的槽位中心 x 座標；超出範圍回傳 null
+  const slotCenterX = (slotNum: number): number | null => {
+    const i = slotNum - 1
+    const { left: L, bottom: B, right: R, top: T } = seg
+    const total = L + B + R + T
+    if (i < 0 || i >= total) return null
+    if (i < L) return SW / 2
+    if (i < L + B) return RW + (i - L) * RW + SW / 2
+    if (i < L + B + R) return loopWidth - SW / 2
+    const dPos = total - 1 - i   // 上排顯示順序反轉
+    return RW + dPos * RW + SW / 2
+  }
+  const x112 = slotCenterX(112)  // 上排 ← 定位依據
+  const x45  = slotCenterX(45)   // 下排 → 定位依據
+
   const [showExtract, setShowExtract] = useState(false)
   const [extractStart, setExtractStart] = useState('')
   const [extractErr, setExtractErr] = useState('')
@@ -219,13 +234,12 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
         {/* 主體：[↓去程] ｜ [面板] ｜ [回程↑] */}
         <div style={{ display: 'flex', flex: 1, overflow: 'hidden', minHeight: 0 }}>
 
-          {/* 左側：上排← 回程 + 去程↓ */}
+          {/* 左側去程大箭頭 */}
           <div style={{
             flexShrink: 0, width: 48,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            gap: 16, pointerEvents: 'none',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            pointerEvents: 'none',
           }}>
-            <span style={{ fontSize: 32, color: '#f97316', fontWeight: 900, lineHeight: 1 }}>←</span>
             <span style={{ fontSize: 42, color: '#3b82f6', fontWeight: 900, lineHeight: 1 }}>↓</span>
           </div>
 
@@ -254,19 +268,38 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
 
           </div>
 
-          {/* 右側：回程↑ + 下排→ 去程 */}
+          {/* 右側回程大箭頭 */}
           <div style={{
             flexShrink: 0, width: 48,
-            display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-            gap: 16, pointerEvents: 'none',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            pointerEvents: 'none',
           }}>
             <span style={{ fontSize: 42, color: '#f97316', fontWeight: 900, lineHeight: 1 }}>↑</span>
-            <span style={{ fontSize: 32, color: '#3b82f6', fontWeight: 900, lineHeight: 1 }}>→</span>
           </div>
 
         </div>
 
       </div>
+
+      {/* ← 方向指示：對齊 112 號格正下方（上排回程方向） */}
+      {x112 !== null && (
+        <div style={{
+          position: 'absolute', left: x112 - 20, top: RH + 4,
+          pointerEvents: 'none', zIndex: 9,
+        }}>
+          <span style={{ fontSize: 36, color: '#f97316', fontWeight: 900, lineHeight: 1 }}>←</span>
+        </div>
+      )}
+
+      {/* → 方向指示：對齊 45 號格正上方（下排去程方向） */}
+      {x45 !== null && (
+        <div style={{
+          position: 'absolute', left: x45 - 20, bottom: RH + 4,
+          pointerEvents: 'none', zIndex: 9,
+        }}>
+          <span style={{ fontSize: 36, color: '#3b82f6', fontWeight: 900, lineHeight: 1 }}>→</span>
+        </div>
+      )}
 
       {/* 130→108 抽車 Modal */}
       {showExtract && (
