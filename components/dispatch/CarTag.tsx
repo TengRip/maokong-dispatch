@@ -40,7 +40,7 @@ export function CarTag({ carId, draggableId, compact = false, noContextMenu = fa
   const [showNotesDialog, setShowNotesDialog] = useState(false)
   const [noteInput, setNoteInput] = useState('')
   const [noteTooltipPos, setNoteTooltipPos] = useState<{ x: number; y: number } | null>(null)
-  const dotRef = useRef<HTMLSpanElement>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
   const initialNoteRef = useRef('')   // 記錄開啟 dialog 當下的備註，決定是否顯示刪除按鈕
 
   useEffect(() => {
@@ -121,9 +121,15 @@ export function CarTag({ carId, draggableId, compact = false, noContextMenu = fa
   return (
     <>
       <div
-        ref={setNodeRef}
+        ref={(el) => { setNodeRef(el); (cardRef as React.MutableRefObject<HTMLDivElement | null>).current = el }}
         {...(isAdmin ? { ...listeners, ...attributes } : {})}
         onContextMenu={handleContextMenu}
+        onMouseEnter={() => {
+          if (!car.notes || !cardRef.current) return
+          const r = cardRef.current.getBoundingClientRect()
+          setNoteTooltipPos({ x: r.left + r.width / 2, y: r.top - 6 })
+        }}
+        onMouseLeave={() => setNoteTooltipPos(null)}
         style={{
           backgroundColor: color,
           color: textColor,
@@ -146,16 +152,7 @@ export function CarTag({ carId, draggableId, compact = false, noContextMenu = fa
           >★</span>
         )}
         {car.notes && (
-          <span
-            ref={dotRef}
-            className="absolute -top-1.5 -left-1 w-2.5 h-2.5 rounded-full bg-orange-400 z-10 cursor-help"
-            onMouseEnter={() => {
-              if (!dotRef.current) return
-              const r = dotRef.current.getBoundingClientRect()
-              setNoteTooltipPos({ x: r.left + r.width / 2, y: r.bottom + 4 })
-            }}
-            onMouseLeave={() => setNoteTooltipPos(null)}
-          />
+          <span className="absolute -top-1.5 -left-1 w-2.5 h-2.5 rounded-full bg-orange-400 z-10 pointer-events-none" />
         )}
       </div>
 
@@ -166,7 +163,7 @@ export function CarTag({ carId, draggableId, compact = false, noContextMenu = fa
             position: 'fixed',
             left: noteTooltipPos.x,
             top: noteTooltipPos.y,
-            transform: 'translateX(-50%)',
+            transform: 'translateX(-50%) translateY(-100%)',
             zIndex: 9998,
             maxWidth: 220,
             pointerEvents: 'none',
