@@ -22,6 +22,7 @@ export function SnapshotPanel() {
   const supabase = createClient()
   const isAdmin = userRole === 'admin'
 
+  const { saveSnapshot } = useApp()
   const [open, setOpen] = useState(false)
   const [snapshots, setSnapshots] = useState<SnapshotRow[]>([])
   const [loading, setLoading] = useState(false)
@@ -31,8 +32,23 @@ export function SnapshotPanel() {
   const [restoring, setRestoring] = useState(false)
   const [restoreError, setRestoreError] = useState('')
   const [restoreSuccess, setRestoreSuccess] = useState(false)
+  const [saveLabel, setSaveLabel] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saveOk, setSaveOk] = useState(false)
 
   if (!isAdmin) return null
+
+  const handleSave = async () => {
+    const label = saveLabel.trim()
+    if (!label) return
+    setSaving(true)
+    await saveSnapshot(label)
+    setSaveOk(true)
+    setSaveLabel('')
+    setSaving(false)
+    setTimeout(() => setSaveOk(false), 2000)
+    loadSnapshots()
+  }
 
   const loadSnapshots = async () => {
     setLoading(true)
@@ -156,6 +172,29 @@ export function SnapshotPanel() {
             <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 bg-slate-50 flex-shrink-0">
               <span className="font-semibold text-slate-700 text-sm">📂 班次記錄</span>
               <button onClick={() => setOpen(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+
+            {/* 儲存快照區 */}
+            <div className="px-3 py-2.5 border-b border-slate-100 bg-blue-50 flex-shrink-0">
+              <div className="text-xs font-medium text-blue-700 mb-1.5">💾 儲存當前狀態</div>
+              <div className="flex gap-1.5">
+                <input
+                  value={saveLabel}
+                  onChange={e => setSaveLabel(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') handleSave() }}
+                  placeholder="輸入快照名稱，如：早班交接"
+                  disabled={saving || saveOk}
+                  className="flex-1 text-xs bg-white border border-blue-200 rounded px-2 py-1.5 text-slate-700 outline-none focus:border-blue-400 placeholder-slate-300 disabled:opacity-50 min-w-0"
+                />
+                <button
+                  onClick={handleSave}
+                  disabled={saving || saveOk || !saveLabel.trim()}
+                  className="text-xs bg-blue-600 hover:bg-blue-700 disabled:opacity-40 text-white rounded px-3 py-1.5 font-medium shrink-0"
+                >
+                  {saveOk ? '✓' : saving ? '…' : '儲存'}
+                </button>
+              </div>
+              {saveOk && <p className="text-green-600 text-[10px] mt-1">已儲存！</p>}
             </div>
 
             <div className="flex-1 overflow-y-auto p-3 space-y-3">

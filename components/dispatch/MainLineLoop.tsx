@@ -142,8 +142,9 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
     const dPos = total - 1 - i
     return rw + dPos * rw + sw / 2
   }
-  const x112 = slotCenterX(112)
-  const x45  = slotCenterX(45)
+  // 依目前模式動態計算上排/下排中間格的 x 座標作為方向箭頭位置
+  const xTopArrow = slotCenterX(seg.left + seg.bottom + seg.right + Math.floor(seg.top / 2) + 1)
+  const xBotArrow = slotCenterX(seg.left + Math.floor(seg.bottom / 2) + 1)
 
   const [showExtract, setShowExtract] = useState(false)
   const [extractStart, setExtractStart] = useState('')
@@ -313,16 +314,16 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
 
       </div>
 
-      {/* ← 方向指示 */}
-      {x112 !== null && (
-        <div style={{ position: 'absolute', left: x112 - 20, top: rh + 4, pointerEvents: 'none', zIndex: 9 }}>
+      {/* ← 方向指示（上排，由右往左） */}
+      {xTopArrow !== null && (
+        <div style={{ position: 'absolute', left: xTopArrow - 20, top: rh + 4, pointerEvents: 'none', zIndex: 9 }}>
           <span style={{ fontSize: 36, color: '#f97316', fontWeight: 900, lineHeight: 1 }}>←</span>
         </div>
       )}
 
-      {/* → 方向指示 */}
-      {x45 !== null && (
-        <div style={{ position: 'absolute', left: x45 - 20, bottom: rh + 4, pointerEvents: 'none', zIndex: 9 }}>
+      {/* → 方向指示（下排，由左往右） */}
+      {xBotArrow !== null && (
+        <div style={{ position: 'absolute', left: xBotArrow - 20, bottom: rh + 4, pointerEvents: 'none', zIndex: 9 }}>
           <span style={{ fontSize: 36, color: '#f97316', fontWeight: 900, lineHeight: 1 }}>→</span>
         </div>
       )}
