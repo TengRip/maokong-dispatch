@@ -90,8 +90,8 @@ export function MainLayout() {
 
         {open ? (
           <div className="flex flex-col gap-2 p-2 overflow-y-auto flex-1">
-            <StorageArea location="zhuanjiaoer" label="轉角二站 儲車區" maxSlots={40} collapsible />
-            <StorageArea location="maokong" label="貓空站 儲車區" maxSlots={10} collapsible />
+            <StorageArea location="zhuanjiaoer" label="轉角二站 儲車區" collapsible />
+            <StorageArea location="maokong" label="貓空站 儲車區" collapsible />
             <MaintenanceNotesSidebar />
             <RetiredArea />
           </div>

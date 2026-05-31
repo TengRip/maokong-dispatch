@@ -8,13 +8,12 @@ import { CarTag } from './CarTag'
 interface StorageAreaProps {
   location: 'zhuanjiaoer' | 'maokong'
   label: string
-  maxSlots: number
   collapsible?: boolean
   defaultCollapsed?: boolean
 }
 
 export function StorageArea({
-  location, label, maxSlots, collapsible = false, defaultCollapsed = false,
+  location, label, collapsible = false, defaultCollapsed = false,
 }: StorageAreaProps) {
   const { cars } = useApp()
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
@@ -37,7 +36,7 @@ export function StorageArea({
     >
       <div className="px-1.5 pt-1.5 pb-0.5 flex items-center justify-between">
         <span className="text-slate-700 text-xs font-semibold">{label}</span>
-        <span className="text-slate-400 text-[9px]">{storedCars.length}/{maxSlots}</span>
+        <span className="text-slate-400 text-[9px]">{storedCars.length} 台</span>
       </div>
       {collapsible && (
         <div className="px-1.5 pb-1">
