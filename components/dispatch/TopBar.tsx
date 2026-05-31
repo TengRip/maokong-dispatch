@@ -162,6 +162,26 @@ export function TopBar() {
   const handleExportImage = async () => {
     const el = document.getElementById('dispatch-app')
     if (!el) return
+
+    // 暫時插入時間戳標籤
+    const now = new Date()
+    const dateStr = now.toLocaleString('zh-TW', {
+      timeZone: 'Asia/Taipei',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+      hour: '2-digit', minute: '2-digit', second: '2-digit',
+      hour12: false,
+    })
+    const stamp = document.createElement('div')
+    stamp.style.cssText = `
+      position:absolute; bottom:8px; right:12px; z-index:9999;
+      background:rgba(0,0,0,0.55); color:#fff;
+      font-size:13px; font-family:monospace; padding:3px 8px;
+      border-radius:4px; pointer-events:none; white-space:nowrap;
+    `
+    stamp.textContent = `📷 ${dateStr}`
+    el.style.position = 'relative'
+    el.appendChild(stamp)
+
     try {
       const { toBlob } = await import('html-to-image')
       const blob = await toBlob(el, { backgroundColor: '#f1f5f9', pixelRatio: 2 })
@@ -176,6 +196,8 @@ export function TopBar() {
       URL.revokeObjectURL(url)
     } catch (e) {
       console.error('截圖失敗:', e)
+    } finally {
+      el.removeChild(stamp)
     }
   }
 
