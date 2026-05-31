@@ -173,7 +173,9 @@ export function TopBar() {
     const a = document.createElement('a')
     a.href = url
     a.download = `貓空纜車調度_${getDateStr()}.png`
+    document.body.appendChild(a)
     a.click()
+    document.body.removeChild(a)
   }
 
   return (

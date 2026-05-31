@@ -242,7 +242,7 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
             ))}
           </div>
           <span className="text-slate-400 text-xs">
-            已排 {filled} 台｜水晶車廂 {positions.filter((id): id is string => id !== null).filter(id => cars[id]?.type === 'crystal').length} 台｜雙擊格子輸入車號
+            上線 {filled} 台｜雙擊格子輸入車號
           </span>
           {isCenterOver && (
             <span className="text-blue-600 text-[10px] bg-white border border-blue-200 rounded px-2 py-0.5">
