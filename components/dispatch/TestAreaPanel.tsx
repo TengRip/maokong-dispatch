@@ -3,15 +3,18 @@
 import { useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { useApp } from '@/lib/store'
+import { getCarOccupiedLabel } from '@/lib/utils'
 import { CarTag } from './CarTag'
 import type { TestArea } from '@/types'
 
-function TestAreaSlot({ areaId, slotIndex, carId }: { areaId: number; slotIndex: number; carId: string | null }) {
+function TestAreaSlot({ areaId, slotIndex, carId, onWarn }: {
+  areaId: number; slotIndex: number; carId: string | null; onWarn: (msg: string) => void
+}) {
   const { isOver, setNodeRef } = useDroppable({
     id: `test_area_${areaId}_slot_${slotIndex}`,
     data: { location: 'test_area', areaId, slot: slotIndex },
   })
-  const { userRole, updateTestArea, testAreas } = useApp()
+  const { userRole, updateTestArea, testAreas, cars, mainLine, weeklySchedule, moveCar } = useApp()
   const [editing, setEditing] = useState(false)
   const [inputVal, setInputVal] = useState('')
   const isAdmin = userRole === 'admin'
@@ -22,10 +25,36 @@ function TestAreaSlot({ areaId, slotIndex, carId }: { areaId: number; slotIndex:
     if (val === carId) return
     const area = testAreas.find(a => a.id === areaId)
     if (!area) return
-    // 補齊 9 格再寫入（相容舊 6 格資料）
+
+    // 補齊 9 格
     const newSlots = Array.from({ length: 9 }, (_, i) => area.slots[i] ?? null) as (string | null)[]
-    newSlots[slotIndex] = val || null
+
+    if (!val) {
+      // 清空格子：把原本的車歸回儲車區
+      newSlots[slotIndex] = null
+      await updateTestArea(areaId, { slots: newSlots })
+      if (carId) await moveCar(carId, 'zhuanjiaoer', undefined, 'test_area')
+      return
+    }
+
+    if (!cars[val]) { onWarn(`找不到車號 ${val}`); return }
+
+    // 檢查是否已在同一自定義區的其他格
+    const sameAreaSlot = area.slots.indexOf(val)
+    if (sameAreaSlot !== -1 && sameAreaSlot !== slotIndex) {
+      onWarn(`${val} 已在此自定義區第 ${sameAreaSlot + 1} 格，無法重複放入`); return
+    }
+
+    // 檢查是否已在其他排班區
+    const occupied = getCarOccupiedLabel(val, mainLine, testAreas, weeklySchedule, areaId)
+    if (occupied) { onWarn(`${val} 目前在${occupied}，請先將其移回儲車區`); return }
+
+    // 若原格有車，先送回儲車區
+    if (carId) await moveCar(carId, 'zhuanjiaoer', undefined, 'test_area')
+    newSlots[slotIndex] = val
     await updateTestArea(areaId, { slots: newSlots })
+    // 同步更新 cars.location
+    await moveCar(val, 'test_area', undefined, cars[val].location)
   }
 
   return (
@@ -61,6 +90,7 @@ function TestAreaCard({ area }: { area: TestArea }) {
   const [nameVal, setNameVal] = useState(area.name)
   const [editingNotes, setEditingNotes] = useState(false)
   const [notesVal, setNotesVal] = useState(area.notes)
+  const [warnMsg, setWarnMsg] = useState('')
   const isAdmin = userRole === 'admin'
 
   const saveName = async () => {
@@ -98,9 +128,20 @@ function TestAreaCard({ area }: { area: TestArea }) {
       {/* 9 個車格（3×3） */}
       <div className="grid grid-cols-3 gap-1 mb-1.5">
         {Array.from({ length: 9 }, (_, i) => area.slots[i] ?? null).map((carId, i) => (
-          <TestAreaSlot key={i} areaId={area.id} slotIndex={i} carId={carId} />
+          <TestAreaSlot key={i} areaId={area.id} slotIndex={i} carId={carId} onWarn={setWarnMsg} />
         ))}
       </div>
+
+      {warnMsg && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-72 border border-slate-200 shadow-xl text-center">
+            <div className="text-3xl mb-3">⚠️</div>
+            <p className="text-slate-800 font-medium text-sm mb-5">{warnMsg}</p>
+            <button onClick={() => setWarnMsg('')}
+              className="bg-slate-700 hover:bg-slate-600 text-white rounded px-5 py-2 text-sm font-medium">確認</button>
+          </div>
+        </div>
+      )}
 
       {/* 備註：標題列固定顯示編輯按鈕，內容獨立一行避免覆蓋 */}
       <div>

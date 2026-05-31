@@ -1,7 +1,9 @@
 'use client'
 
+import { useState } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { useApp } from '@/lib/store'
+import { getCarOccupiedLabel } from '@/lib/utils'
 import { CarTag } from './CarTag'
 
 const DAYS = [
@@ -12,12 +14,14 @@ const DAYS = [
   { key: 'friday', label: '五' },
 ]
 
-function WeeklySlot({ day, index, carId }: { day: string; index: number; carId: string | null }) {
+function WeeklySlot({ day, index, carId, onWarn }: {
+  day: string; index: number; carId: string | null; onWarn: (msg: string) => void
+}) {
   const { isOver, setNodeRef } = useDroppable({
     id: `weekly_${day}_${index}`,
     data: { location: 'weekly_schedule', day, slot: index },
   })
-  const { userRole, weeklySchedule, updateWeeklySchedule } = useApp()
+  const { userRole, weeklySchedule, updateWeeklySchedule, cars, mainLine, testAreas, moveCar } = useApp()
   const isAdmin = userRole === 'admin'
 
   const handleClick = async () => {
@@ -27,8 +31,30 @@ function WeeklySlot({ day, index, carId }: { day: string; index: number; carId: 
     const val = input.trim().toUpperCase() || null
     const existing = weeklySchedule[day] ?? []
     const slots = Array.from({ length: 14 }, (_, i) => existing[i] ?? null) as (string | null)[]
+
+    if (!val) {
+      // 清空：把原本的車歸回儲車區
+      slots[index] = null
+      await updateWeeklySchedule(day, slots)
+      if (carId) await moveCar(carId, 'zhuanjiaoer', undefined, 'weekly_schedule')
+      return
+    }
+
+    if (!cars[val]) { onWarn(`找不到車號 ${val}`); return }
+
+    // 檢查是否已在同一週排程欄的其他格
+    if (slots.includes(val) && slots.indexOf(val) !== index) {
+      onWarn(`${val} 已在週${DAYS.find(d => d.key === day)?.label ?? day}排程的其他格，無法重複放入`); return
+    }
+
+    // 檢查是否已在其他排班區
+    const occupied = getCarOccupiedLabel(val, mainLine, testAreas, weeklySchedule, undefined, day)
+    if (occupied) { onWarn(`${val} 目前在${occupied}，請先將其移回儲車區`); return }
+
     slots[index] = val
     await updateWeeklySchedule(day, slots)
+    // 同步更新 cars.location
+    await moveCar(val, 'weekly_schedule', undefined, cars[val].location)
   }
 
   return (
@@ -50,6 +76,7 @@ function WeeklySlot({ day, index, carId }: { day: string; index: number; carId: 
 
 export function WeeklySchedulePanel() {
   const { weeklySchedule } = useApp()
+  const [warnMsg, setWarnMsg] = useState('')
 
   return (
     <div>
@@ -62,13 +89,24 @@ export function WeeklySchedulePanel() {
               <div className="text-slate-500 text-xs text-center mb-1 font-semibold">週{label}</div>
               <div className="flex flex-col gap-1">
                 {slots.map((carId, i) => (
-                  <WeeklySlot key={i} day={key} index={i} carId={carId} />
+                  <WeeklySlot key={i} day={key} index={i} carId={carId} onWarn={setWarnMsg} />
                 ))}
               </div>
             </div>
           )
         })}
       </div>
+
+      {warnMsg && (
+        <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50">
+          <div className="bg-white rounded-xl p-6 w-72 border border-slate-200 shadow-xl text-center">
+            <div className="text-3xl mb-3">⚠️</div>
+            <p className="text-slate-800 font-medium text-sm mb-5">{warnMsg}</p>
+            <button onClick={() => setWarnMsg('')}
+              className="bg-slate-700 hover:bg-slate-600 text-white rounded px-5 py-2 text-sm font-medium">確認</button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

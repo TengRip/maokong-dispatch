@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { useApp } from '@/lib/store'
+import { getCarOccupiedLabel } from '@/lib/utils'
 import { CarTag } from './CarTag'
 import { WeeklySchedulePanel } from './WeeklySchedulePanel'
 import { MaintenancePanel } from './MaintenancePanel'
@@ -38,7 +39,7 @@ function LoopSlot({ index, carId, onWarn, sw, sh }: {
     id: `main_line_slot_${index}`,
     data: { location: 'main_line', slot: index },
   })
-  const { userRole, updateMainLinePosition, moveCar, cars, mainLine } = useApp()
+  const { userRole, updateMainLinePosition, moveCar, cars, mainLine, testAreas, weeklySchedule } = useApp()
   const [editing, setEditing] = useState(false)
   const [inputVal, setInputVal] = useState('')
   const isAdmin = userRole === 'admin'
@@ -58,11 +59,8 @@ function LoopSlot({ index, carId, onWarn, sw, sh }: {
 
     if (!cars[val]) { onWarn(`找不到車號 ${val}`); return }
 
-    const existingSlot = mainLine.positions.indexOf(val)
-    if (existingSlot !== -1 && existingSlot !== index) {
-      onWarn(`${val} 已在正線第 ${existingSlot + 1} 格，無法加入`)
-      return
-    }
+    const occupied = getCarOccupiedLabel(val, mainLine, testAreas, weeklySchedule)
+    if (occupied) { onWarn(`${val} 目前在${occupied}，請先將其移回儲車區`); return }
 
     if (carId && carId !== val) await moveCar(carId, 'zhuanjiaoer', undefined, 'main_line')
     await updateMainLinePosition(index, val)
