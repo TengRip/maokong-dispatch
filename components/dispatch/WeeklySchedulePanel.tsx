@@ -80,7 +80,7 @@ export function WeeklySchedulePanel() {
 
   return (
     <div>
-      <div className="text-slate-600 text-base font-semibold mb-2">週排程區</div>
+      <div className="text-slate-600 text-base font-semibold mb-2">週排程區（已收G4）</div>
       <div className="flex gap-2 overflow-x-auto pb-1">
         {DAYS.map(({ key, label }) => {
           const slots: (string | null)[] = Array.from({ length: 14 }, (_, i) => (weeklySchedule[key] ?? [])[i] ?? null)

@@ -2,8 +2,18 @@
 
 import { useState } from 'react'
 import { useApp } from '@/lib/store'
-import { CarTag } from './CarTag'
 import type { MaintenanceUnit } from '@/types'
+
+function MaintenanceCarChip({ carId }: { carId: string }) {
+  return (
+    <div
+      style={{ width: 34, height: 28 }}
+      className="flex items-center justify-center rounded-sm border border-dashed border-purple-400 bg-white text-purple-600 text-xs font-bold select-none"
+    >
+      {carId}
+    </div>
+  )
+}
 
 function MaintenanceUnitCard({ unit }: { unit: MaintenanceUnit }) {
   const { userRole, updateMaintenanceUnit, cars } = useApp()
@@ -65,9 +75,7 @@ function MaintenanceUnitCard({ unit }: { unit: MaintenanceUnit }) {
                 return a.localeCompare(b)
               }).map(cid => (
                 <div key={cid} className="flex items-center gap-0.5">
-                  <div style={{ width: 34, height: 28 }}>
-                    <CarTag carId={cid} draggableId={`maintenance_${unit.id}_${cid}`} compact noContextMenu />
-                  </div>
+                  <MaintenanceCarChip carId={cid} />
                   {isAdmin && (
                     <button
                       onClick={() => removeCar(cid)}
