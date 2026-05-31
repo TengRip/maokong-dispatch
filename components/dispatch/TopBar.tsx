@@ -6,9 +6,11 @@ import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { SettingsPanel } from './SettingsPanel'
 import { DiagnosticsPanel } from './DiagnosticsPanel'
+import { NotesPanel } from './NotesPanel'
+import { SnapshotPanel } from './SnapshotPanel'
 
 export function TopBar() {
-  const { userRole, userEmail, saveSnapshot, cars, maintenanceUnits, setHighlightedCarId } = useApp()
+  const { userRole, userEmail, saveSnapshot, cars, maintenanceUnits, setHighlightedCarId, mainLine } = useApp()
   const [searchVal, setSearchVal] = useState('')
   const [searchResult, setSearchResult] = useState<string | null>(null)
   const [snapshotLabel, setSnapshotLabel] = useState('')
@@ -28,12 +30,18 @@ export function TopBar() {
       main_line: '正線區',
       zhuanjiaoer: '轉角二站儲車區',
       maokong: '貓空站儲車區',
-      test_area: '測試區',
+      test_area: '自定義區',
       weekly_schedule: '週排程區',
       unassigned: '未分配',
     }
     const loc = locationMap[car.location] ?? car.location
-    const extra = car.location_slot !== null && car.location_slot !== undefined ? `（格 ${car.location_slot + 1}）` : ''
+    let extra = ''
+    if (car.location === 'main_line') {
+      const slot = mainLine.positions.indexOf(cid)
+      extra = slot !== -1 ? `（第 ${slot + 1} 格）` : '（位置異常，建議執行診斷）'
+    } else if (car.location_slot !== null && car.location_slot !== undefined) {
+      extra = `（格 ${car.location_slot + 1}）`
+    }
     const maintenance = maintenanceCarIds.has(cid) ? ' ⚠ 有維修需求' : ''
     setSearchResult(`${cid}：${loc}${extra}${maintenance}`)
     setHighlightedCarId(cid)
@@ -63,14 +71,22 @@ export function TopBar() {
 
       {/* 搜尋車號 */}
       <div className="flex items-center gap-1">
-        <input
-          value={searchVal}
-          onChange={e => { setSearchVal(e.target.value); setSearchResult(null); if (!e.target.value) setHighlightedCarId(null) }}
-          onKeyDown={e => { if (e.key === 'Enter') handleSearch() }}
-          placeholder="搜尋車號…"
-          className="w-24 text-xs bg-slate-600 border border-slate-500 rounded px-2 py-1 text-white placeholder-slate-400 focus:outline-none focus:border-blue-400"
-          maxLength={4}
-        />
+        <div className="relative flex items-center">
+          <input
+            value={searchVal}
+            onChange={e => { setSearchVal(e.target.value); setSearchResult(null); if (!e.target.value) setHighlightedCarId(null) }}
+            onKeyDown={e => { if (e.key === 'Enter') handleSearch() }}
+            placeholder="搜尋車號…"
+            className="w-24 text-xs bg-slate-600 border border-slate-500 rounded px-2 py-1 text-white placeholder-slate-400 focus:outline-none focus:border-blue-400 pr-5"
+            maxLength={4}
+          />
+          {searchVal && (
+            <button
+              onClick={() => { setSearchVal(''); setSearchResult(null); setHighlightedCarId(null) }}
+              className="absolute right-1 text-slate-400 hover:text-white text-xs leading-none"
+            >✕</button>
+          )}
+        </div>
         <button
           onClick={handleSearch}
           className="text-xs bg-slate-500 hover:bg-slate-400 text-white rounded px-2 py-1"
@@ -124,6 +140,8 @@ export function TopBar() {
 
       {/* 設定按鈕 + 帳號資訊 */}
       <div className="flex items-center gap-2 ml-2">
+        <NotesPanel />
+        <SnapshotPanel />
         <DiagnosticsPanel />
         <SettingsPanel />
         <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${isAdmin ? 'bg-blue-500 text-white' : 'bg-slate-500 text-slate-200'}`}>

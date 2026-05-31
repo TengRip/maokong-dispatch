@@ -116,21 +116,32 @@ export function DragHandler({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // ── 更新目標槽位 ──────────────────────────────────
+    // ── 更新目標槽位（若目標格已有其他車，先把它移回轉角二站）──
     if (toLocation === 'main_line' && toSlot !== undefined) {
+      const displaced = mainLine.positions[toSlot]
+      if (displaced && displaced !== carId) {
+        await moveCar(displaced, 'zhuanjiaoer', undefined, 'main_line')
+      }
       await updateMainLinePosition(toSlot, carId)
 
     } else if (toLocation === 'test_area' && toAreaId !== undefined && toSlot !== undefined) {
       const area = testAreas.find(a => a.id === toAreaId)
       if (area) {
+        const displaced = area.slots[toSlot]
+        if (displaced && displaced !== carId) {
+          await moveCar(displaced, 'zhuanjiaoer', undefined, 'test_area')
+        }
         const newSlots = [...area.slots] as (string | null)[]
         newSlots[toSlot] = carId
         await updateTestArea(toAreaId, { slots: newSlots })
       }
 
     } else if (toLocation === 'weekly_schedule' && toDay && toSlot !== undefined) {
-      // 使用已清除來源後的最新版本，避免重複寫入
       const slots = [...(latestWeeklySchedule[toDay] ?? Array(10).fill(null))] as (string | null)[]
+      const displaced = slots[toSlot]
+      if (displaced && displaced !== carId) {
+        await moveCar(displaced, 'zhuanjiaoer', undefined, 'weekly_schedule')
+      }
       slots[toSlot] = carId
       await updateWeeklySchedule(toDay, slots)
     }

@@ -44,7 +44,7 @@ function MaintenanceUnitCard({ unit }: { unit: MaintenanceUnit }) {
             className="flex-1 text-xs bg-slate-100 text-slate-900 px-1 py-0.5 rounded outline-none border border-blue-500"
           />
         ) : (
-          <span className="text-xs font-semibold text-purple-700">{unit.name}</span>
+          <span className="text-sm font-semibold text-purple-700">{unit.name}</span>
         )}
         {isAdmin && !editingName && (
           <button onClick={() => setEditingName(true)}
@@ -52,21 +52,31 @@ function MaintenanceUnitCard({ unit }: { unit: MaintenanceUnit }) {
         )}
       </div>
 
-      {/* 已登錄車號（最多三台換行） */}
-      <div className="grid grid-cols-3 gap-1.5 min-h-[28px] mb-2">
+      {/* 已登錄車號（34×28 格子，每排最多 6 台換行） */}
+      <div className="mb-2 min-h-[28px]">
         {unit.car_ids.length === 0
           ? <span className="text-slate-400 text-[10px]">（無排程）</span>
-          : unit.car_ids.map(cid => (
-            <div key={cid} className="flex items-center gap-0.5">
-              <CarTag carId={cid} draggableId={`maintenance_${unit.id}_${cid}`} noContextMenu />
-              {isAdmin && (
-                <button
-                  onClick={() => removeCar(cid)}
-                  className="text-slate-400 hover:text-red-500 text-sm leading-none w-4 h-4 flex items-center justify-center rounded hover:bg-red-50"
-                >×</button>
-              )}
+          : <div style={{ display: 'grid', gridTemplateColumns: `repeat(${unit.id === 3 ? 3 : unit.id === 2 ? 4 : 5}, max-content)`, gap: 4 }}>
+              {[...unit.car_ids].sort((a, b) => {
+                const na = parseInt(a), nb = parseInt(b)
+                if (!isNaN(na) && !isNaN(nb)) return na - nb
+                if (!isNaN(na)) return -1
+                if (!isNaN(nb)) return 1
+                return a.localeCompare(b)
+              }).map(cid => (
+                <div key={cid} className="flex items-center gap-0.5">
+                  <div style={{ width: 34, height: 28 }}>
+                    <CarTag carId={cid} draggableId={`maintenance_${unit.id}_${cid}`} compact noContextMenu />
+                  </div>
+                  {isAdmin && (
+                    <button
+                      onClick={() => removeCar(cid)}
+                      className="text-red-400 hover:text-red-600 text-sm leading-none w-4 h-4 flex items-center justify-center rounded hover:bg-red-50"
+                    >×</button>
+                  )}
+                </div>
+              ))}
             </div>
-          ))
         }
       </div>
 
@@ -76,14 +86,14 @@ function MaintenanceUnitCard({ unit }: { unit: MaintenanceUnit }) {
           <input value={inputCar} onChange={e => setInputCar(e.target.value)}
             onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCar() } }}
             placeholder="輸入車號 Enter 新增"
-            className="flex-1 text-[10px] bg-slate-50 border border-slate-300 rounded px-1.5 py-1 text-slate-900 outline-none focus:border-purple-400"
+            className="flex-1 text-xs bg-slate-50 border border-slate-300 rounded px-1.5 py-1 text-slate-900 outline-none focus:border-purple-400"
             maxLength={4}
           />
           <button onClick={addCar}
-            className="text-[10px] bg-purple-500 hover:bg-purple-600 text-white rounded px-2 py-1">+</button>
+            className="text-xs bg-purple-500 hover:bg-purple-600 text-white rounded px-2 py-1">+</button>
         </div>
       )}
-      {inputError && <p className="text-red-500 text-[10px] mt-0.5">{inputError}</p>}
+      {inputError && <p className="text-red-500 text-xs mt-0.5">{inputError}</p>}
     </div>
   )
 }
@@ -99,8 +109,8 @@ export function MaintenancePanel({ mode = 'sidebar' }: MaintenancePanelProps) {
   if (mode === 'inline') {
     return (
       <div>
-        <div className="text-slate-600 text-xs font-semibold mb-2">維修排程區</div>
-        <div className="flex gap-2">
+        <div className="text-slate-600 text-base font-semibold mb-2">維修排程區</div>
+        <div className="flex flex-row gap-2">
           {maintenanceUnits.map(unit => (
             <MaintenanceUnitCard key={unit.id} unit={unit} />
           ))}

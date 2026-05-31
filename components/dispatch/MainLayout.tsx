@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { useApp } from '@/lib/store'
 import { StorageArea } from './StorageArea'
+import { RetiredArea } from './RetiredArea'
 import { MainLineLoop } from './MainLineLoop'
 import { MaintenanceNotesSidebar } from './MaintenanceNotesSidebar'
 
@@ -76,7 +77,7 @@ export function MainLayout() {
     <div className="flex flex-1 overflow-hidden">
 
       {/* 左側側欄 */}
-      <div className={`flex-shrink-0 flex flex-col border-r border-slate-300 bg-white ${open ? 'w-52' : 'w-9'}`}>
+      <div className={`flex-shrink-0 flex flex-col border-r border-slate-300 bg-white ${open ? 'w-40' : 'w-9'}`}>
 
         {/* 收折按鈕 */}
         <button
@@ -92,6 +93,7 @@ export function MainLayout() {
             <StorageArea location="zhuanjiaoer" label="轉角二站 儲車區" maxSlots={40} collapsible />
             <StorageArea location="maokong" label="貓空站 儲車區" maxSlots={10} collapsible />
             <MaintenanceNotesSidebar />
+            <RetiredArea />
           </div>
         ) : (
           <CollapsedStorageStrip />

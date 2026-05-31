@@ -9,7 +9,7 @@ const LOCATION_LABELS: Record<string, string> = {
   zhuanjiaoer:    '轉角二站儲車區',
   main_line:      '正線',
   maokong:        '貓空站儲車區',
-  test_area:      '測試區',
+  test_area:      '自定義區',
   weekly_schedule:'週排程',
   unassigned:     '未分配',
 }
@@ -85,7 +85,7 @@ function runScan(
     } else if (car.location === 'main_line' && !posSet.has(car.id)) {
       issues.push({ carId: car.id, type: 'orphan_main', detail: '正線孤兒：cars 表顯示在正線，但 positions[] 無此車' })
     } else if (car.location === 'test_area' && !testSet.has(car.id)) {
-      issues.push({ carId: car.id, type: 'orphan_test', detail: '測試區孤兒：cars 表顯示在測試區，但各 slots 無此車' })
+      issues.push({ carId: car.id, type: 'orphan_test', detail: '自定義區孤兒：cars 表顯示在自定義區，但各 slots 無此車' })
     } else if (car.location === 'weekly_schedule' && !weeklySet.has(car.id)) {
       issues.push({ carId: car.id, type: 'orphan_weekly', detail: '週排程孤兒：cars 表顯示在週排程，但各 slots 無此車' })
     }
@@ -118,7 +118,7 @@ function runScan(
     a.slots.forEach((cid, i) => {
       if (cid && cars[cid] && cars[cid].location !== 'test_area') {
         if (!issues.find(x => x.carId === cid && x.type === 'ghost_test')) {
-          issues.push({ carId: cid, type: 'ghost_test', detail: `測試區幽靈：${a.name}[${i + 1}] 有此車，但 cars 表位置為 ${LOCATION_LABELS[cars[cid].location] ?? cars[cid].location}` })
+          issues.push({ carId: cid, type: 'ghost_test', detail: `自定義區幽靈：${a.name}[${i + 1}] 有此車，但 cars 表位置為 ${LOCATION_LABELS[cars[cid].location] ?? cars[cid].location}` })
         }
       }
     })

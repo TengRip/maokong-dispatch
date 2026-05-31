@@ -25,7 +25,8 @@ interface AppActions {
   setReferencecar: (carId: string, isCurrentlyReference?: boolean) => Promise<void>
   updateMainLineMode: (mode: 108 | 130) => Promise<void>
   updateMainLinePosition: (index: number, carId: string | null) => Promise<void>
-  extractCarsFrom130To108: (startCarId: string) => Promise<void>
+  extractCarsFrom130To108: (startCarId: string, count: number) => Promise<void>
+  switchDirectlyTo108: () => Promise<void>
   updateTestArea: (areaId: number, updates: Partial<TestArea>) => Promise<void>
   updateMaintenanceUnit: (unitId: number, updates: Partial<MaintenanceUnit>) => Promise<void>
   updateWeeklySchedule: (day: string, slots: (string | null)[]) => Promise<void>
@@ -35,6 +36,8 @@ interface AppActions {
   updateBulletin: (updates: Partial<BulletinData>) => Promise<void>
   saveSnapshot: (label: string) => Promise<void>
   logOperation: (action: string, carId?: string, from?: string, to?: string, detail?: string) => Promise<void>
+  updateCarNotes: (carId: string, notes: string) => Promise<void>
+  applyStatusColors: (colors: StatusColors) => void
 }
 
 const AppContext = createContext<(AppState & AppActions) | null>(null)
@@ -65,7 +68,7 @@ export function AppProvider({ children, userRole, userEmail }: {
     other: '#22C55E',
   })
   const [showMaintenancePanel, setShowMaintenancePanel] = useState(false)
-  const [visibleTestAreas, setVisibleTestAreas] = useState(3)
+  const [visibleTestAreas, setVisibleTestAreas] = useState(6)
   const [bulletin, setBulletin] = useState<BulletinData>({ title: '佈告欄', date: '', content: '', maintenance_notes: '' })
   const [highlightedCarId, setHighlightedCarId] = useState<string | null>(null)
 
@@ -205,8 +208,8 @@ export function AppProvider({ children, userRole, userEmail }: {
     const car = cars[carId]
     if (!car) return
 
-    // 報廢車不能上正線
-    if (toLocation === 'main_line' && car.status === 'scrapped') return
+    // 報廢車不允許手動移動，須先改狀態
+    if (car.status === 'scrapped') return
 
     // 樂觀更新：立即更新本地 state
     setCars(prev => ({
@@ -233,10 +236,50 @@ export function AppProvider({ children, userRole, userEmail }: {
 
   const updateCarStatus = useCallback(async (carId: string, status: Car['status']) => {
     if (!isAdmin) return
-    setCars(prev => ({ ...prev, [carId]: { ...prev[carId], status } }))
-    await supabase.from('cars').update({ status, updated_at: new Date().toISOString() }).eq('id', carId)
+    const car = cars[carId]
+    if (!car) return
+
+    const isScrapping = status === 'scrapped'
+
+    // 樂觀更新（報廢時一併把 location 改為 zhuanjiaoer）
+    setCars(prev => ({
+      ...prev,
+      [carId]: { ...prev[carId], status, ...(isScrapping ? { location: 'zhuanjiaoer' as const, location_slot: undefined } : {}) }
+    }))
+
+    await supabase.from('cars').update({
+      status,
+      updated_at: new Date().toISOString(),
+      ...(isScrapping ? { location: 'zhuanjiaoer', location_slot: null } : {}),
+    }).eq('id', carId)
+
+    // 報廢時從原區域清除格位
+    if (isScrapping) {
+      if (car.location === 'main_line') {
+        const newPositions = mainLine.positions.map(p => p === carId ? null : p)
+        setMainLine(prev => ({ ...prev, positions: newPositions }))
+        await supabase.from('main_line').update({ positions: newPositions, updated_at: new Date().toISOString() }).eq('id', 1)
+      } else if (car.location === 'test_area') {
+        const ta = testAreas.find(a => a.slots.includes(carId))
+        if (ta) {
+          const newSlots = ta.slots.map(s => s === carId ? null : s)
+          setTestAreas(prev => prev.map(a => a.id === ta.id ? { ...a, slots: newSlots } : a))
+          await supabase.from('test_areas').update({ slots: newSlots, updated_at: new Date().toISOString() }).eq('id', ta.id)
+        }
+      } else if (car.location === 'weekly_schedule') {
+        for (const [day, slots] of Object.entries(weeklySchedule)) {
+          const daySlots = slots as (string | null)[]
+          if (daySlots.includes(carId)) {
+            const newSlots = daySlots.map(s => s === carId ? null : s)
+            setWeeklySchedule(prev => ({ ...prev, [day]: newSlots }))
+            await supabase.from('weekly_schedule').update({ [day]: newSlots, updated_at: new Date().toISOString() }).eq('id', 1)
+          }
+        }
+      }
+    }
+
     await logOperation('更新狀態', carId, undefined, undefined, status)
-  }, [isAdmin, supabase, logOperation])
+  }, [isAdmin, supabase, cars, mainLine, testAreas, weeklySchedule, logOperation])
 
   const setReferencecar = useCallback(async (carId: string, isCurrentlyReference = false) => {
     if (!isAdmin) return
@@ -264,9 +307,24 @@ export function AppProvider({ children, userRole, userEmail }: {
 
   const updateMainLineMode = useCallback(async (mode: 108 | 130) => {
     if (!isAdmin) return
-    await supabase.from('main_line').update({ mode, updated_at: new Date().toISOString() }).eq('id', 1)
+
+    if (mode === 130 && mainLine.mode === 108) {
+      // 108→130：前 43 台不動，空出 44–65（22 格），後 65 台整體後移 22 格
+      const cur = mainLine.positions
+      const newPositions: (string | null)[] = new Array(130).fill(null)
+      for (let i = 0; i < 65; i++) newPositions[i] = cur[i] ?? null
+      for (let i = 65; i < 108; i++) newPositions[i + 22] = cur[i] ?? null
+      setMainLine({ mode: 130, positions: newPositions })
+      await supabase.from('main_line').update({
+        mode: 130, positions: newPositions, updated_at: new Date().toISOString(),
+      }).eq('id', 1)
+    } else {
+      setMainLine(prev => ({ ...prev, mode }))
+      await supabase.from('main_line').update({ mode, updated_at: new Date().toISOString() }).eq('id', 1)
+    }
+
     await logOperation('切換正線模式', undefined, undefined, undefined, `${mode} 車模式`)
-  }, [isAdmin, supabase, logOperation])
+  }, [isAdmin, supabase, logOperation, mainLine.mode, mainLine.positions])
 
   const updateMainLinePosition = useCallback(async (index: number, carId: string | null) => {
     if (!isAdmin) return
@@ -297,7 +355,7 @@ export function AppProvider({ children, userRole, userEmail }: {
     }
   }, [isAdmin, mainLine.positions, supabase])
 
-  const extractCarsFrom130To108 = useCallback(async (startCarId: string) => {
+  const extractCarsFrom130To108 = useCallback(async (startCarId: string, count: number) => {
     if (!isAdmin) return
     const positions = [...mainLine.positions]
     const startIndex = positions.indexOf(startCarId)
@@ -306,10 +364,10 @@ export function AppProvider({ children, userRole, userEmail }: {
     const extractedIds: string[] = []
     const totalSlots = positions.length
 
-    // 環形抽出 22 台實際列車（空格不計數，繼續往下找直到收滿 22 台）
+    // 環形抽出 count 台實際列車（空格不計數，繼續往下找直到收滿）
     let extracted = 0
     let i = 0
-    while (extracted < 22 && i < totalSlots) {
+    while (extracted < count && i < totalSlots) {
       const idx = (startIndex + i) % totalSlots
       if (positions[idx]) {
         extractedIds.push(positions[idx]!)
@@ -347,7 +405,44 @@ export function AppProvider({ children, userRole, userEmail }: {
         : Promise.resolve(),
     ])
 
-    await logOperation('130→108 抽車', startCarId, 'main_line', 'zhuanjiaoer', `抽出 ${extractedIds.join(', ')}`)
+    await logOperation('130→108 抽車', startCarId, 'main_line', 'zhuanjiaoer', `抽出 ${count} 台：${extractedIds.join(', ')}`)
+  }, [isAdmin, mainLine.positions, supabase, logOperation])
+
+  const switchDirectlyTo108 = useCallback(async () => {
+    if (!isAdmin) return
+
+    // 先壓縮：濾掉所有空格，依位置順序收集實際車廂
+    const allCars = mainLine.positions.filter((p): p is string => p !== null)
+    const toKeep = allCars.slice(0, 108)
+    const excess = allCars.slice(108)  // 超過 108 台才有（略過抽車路徑）
+
+    const newPositions: (string | null)[] = new Array(108).fill(null)
+    toKeep.forEach((car, i) => { newPositions[i] = car })
+
+    setMainLine({ mode: 108, positions: newPositions })
+    if (excess.length > 0) {
+      setCars(prev => {
+        const updated = { ...prev }
+        excess.forEach(cid => {
+          if (updated[cid]) updated[cid] = { ...updated[cid], location: 'zhuanjiaoer', location_slot: undefined }
+        })
+        return updated
+      })
+    }
+
+    await Promise.all([
+      supabase.from('main_line').update({
+        mode: 108,
+        positions: newPositions,
+        updated_at: new Date().toISOString()
+      }).eq('id', 1),
+      excess.length > 0
+        ? supabase.from('cars').update({ location: 'zhuanjiaoer', location_slot: null }).in('id', excess)
+        : Promise.resolve(),
+    ])
+
+    await logOperation('130→108 略過抽車', undefined, undefined, undefined,
+      excess.length > 0 ? `歸還後段車廂 ${excess.join(', ')}` : '無超出格位車廂')
   }, [isAdmin, mainLine.positions, supabase, logOperation])
 
   const updateTestArea = useCallback(async (areaId: number, updates: Partial<TestArea>) => {
@@ -379,6 +474,16 @@ export function AppProvider({ children, userRole, userEmail }: {
     await supabase.from('bulletin_board').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', 1)
   }, [isAdmin, supabase])
 
+  const updateCarNotes = useCallback(async (carId: string, notes: string) => {
+    if (!isAdmin) return
+    setCars(prev => ({ ...prev, [carId]: { ...prev[carId], notes } }))
+    await supabase.from('cars').update({ notes: notes || null, updated_at: new Date().toISOString() }).eq('id', carId)
+  }, [isAdmin, supabase])
+
+  const applyStatusColors = useCallback((colors: StatusColors) => {
+    setStatusColors(colors)
+  }, [])
+
   const saveSnapshot = useCallback(async (label: string) => {
     if (!isAdmin) return
     const [{ data: carsData }, { data: mlData }, { data: taData }, { data: muData }, { data: wsData }] = await Promise.all([
@@ -407,10 +512,10 @@ export function AppProvider({ children, userRole, userEmail }: {
       cars, mainLine, testAreas, maintenanceUnits, weeklySchedule, statusColors,
       showMaintenancePanel, visibleTestAreas, bulletin, userRole, userEmail, highlightedCarId,
       moveCar, updateCarStatus, setReferencecar, updateMainLineMode,
-      updateMainLinePosition, extractCarsFrom130To108,
+      updateMainLinePosition, extractCarsFrom130To108, switchDirectlyTo108,
       updateTestArea, updateMaintenanceUnit, updateWeeklySchedule,
       setShowMaintenancePanel, setVisibleTestAreas, setHighlightedCarId,
-      updateBulletin, saveSnapshot, logOperation,
+      updateBulletin, saveSnapshot, logOperation, updateCarNotes, applyStatusColors,
     }}>
       {children}
     </AppContext.Provider>

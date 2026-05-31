@@ -26,7 +26,7 @@ export function MaintenanceNotesSidebar() {
         disabled={!isAdmin}
         placeholder={isAdmin ? '輸入維修需求…' : '（無內容）'}
         rows={5}
-        className="w-full text-xs bg-slate-50 border border-slate-200 rounded px-1.5 py-1 text-slate-700 outline-none focus:border-blue-400 resize-none placeholder-slate-300 disabled:bg-transparent disabled:border-transparent leading-relaxed"
+        className="w-full text-base bg-slate-50 border border-slate-200 rounded px-1.5 py-1 text-slate-700 outline-none focus:border-blue-400 resize-none placeholder-slate-300 disabled:bg-transparent disabled:border-transparent leading-relaxed"
       />
     </div>
   )

@@ -3,19 +3,27 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useApp } from '@/lib/store'
 
+const FS_KEY = 'maokong_bulletin_fontsize'
+const FS_MIN = 10
+const FS_MAX = 22
+const FS_DEFAULT = 14
+
 export function BulletinBoard() {
   const { bulletin, updateBulletin, userRole } = useApp()
   const isAdmin = userRole === 'admin'
 
   const [editingTitle, setEditingTitle] = useState(false)
   const [titleVal, setTitleVal] = useState(bulletin.title)
-  const [dateVal, setDateVal] = useState(bulletin.date)
   const [contentVal, setContentVal] = useState(bulletin.content)
+  const [fontSize, setFontSize] = useState(FS_DEFAULT)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-  // 同步其他人的 realtime 修改
+  useEffect(() => {
+    const saved = localStorage.getItem(FS_KEY)
+    if (saved) setFontSize(Number(saved))
+  }, [])
+
   useEffect(() => { setTitleVal(bulletin.title) }, [bulletin.title])
-  useEffect(() => { setDateVal(bulletin.date) }, [bulletin.date])
   useEffect(() => { setContentVal(bulletin.content) }, [bulletin.content])
 
   const debouncedSave = useCallback((updates: Parameters<typeof updateBulletin>[0]) => {
@@ -30,8 +38,16 @@ export function BulletinBoard() {
     else setTitleVal(bulletin.title)
   }
 
+  const changeFontSize = (delta: number) => {
+    setFontSize(prev => {
+      const next = Math.min(FS_MAX, Math.max(FS_MIN, prev + delta))
+      localStorage.setItem(FS_KEY, String(next))
+      return next
+    })
+  }
+
   return (
-    <div className="bg-amber-50 rounded-lg border border-amber-200 p-2 w-full flex flex-col gap-1.5">
+    <div className="bg-amber-50 rounded-lg border border-amber-200 p-2 flex flex-col gap-1.5 w-full h-full" style={{ resize: 'vertical', overflow: 'auto', minWidth: 144, minHeight: 120 }}>
 
       {/* 標題列 */}
       <div className="flex items-center gap-1 border-b border-amber-200 pb-1.5">
@@ -49,40 +65,41 @@ export function BulletinBoard() {
           />
         ) : (
           <>
-            <span className="flex-1 text-xs font-bold text-amber-800">📋 {bulletin.title}</span>
+            <span className="flex-1 text-base font-bold text-amber-800">📋 {bulletin.title}</span>
             {isAdmin && (
-              <button
-                onClick={() => setEditingTitle(true)}
-                className="text-[10px] text-amber-400 hover:text-amber-600"
-                title="改名"
-              >✏</button>
+              <button onClick={() => setEditingTitle(true)} className="text-xs text-amber-400 hover:text-amber-600" title="改名">✏</button>
             )}
           </>
         )}
-      </div>
 
-      {/* 日期 */}
-      <div className="flex items-center gap-1.5">
-        <span className="text-[10px] text-amber-600 shrink-0 font-medium">日期</span>
-        <input
-          value={dateVal}
-          onChange={e => { setDateVal(e.target.value); debouncedSave({ date: e.target.value }) }}
-          placeholder="如：5/29 AM"
-          disabled={!isAdmin}
-          className="flex-1 text-[10px] bg-white border border-amber-200 rounded px-1.5 py-0.5 text-slate-700 outline-none focus:border-amber-400 placeholder-amber-300 disabled:bg-transparent disabled:border-transparent min-w-0"
-        />
+        {/* 字級調整 */}
+        <div className="flex items-center gap-0.5 ml-1">
+          <button
+            onClick={() => changeFontSize(-1)}
+            disabled={fontSize <= FS_MIN}
+            className="w-5 h-5 flex items-center justify-center text-amber-500 hover:text-amber-700 hover:bg-amber-100 rounded text-sm leading-none disabled:opacity-30"
+            title="縮小字體"
+          >−</button>
+          <span className="text-[10px] text-amber-500 w-6 text-center">{fontSize}</span>
+          <button
+            onClick={() => changeFontSize(1)}
+            disabled={fontSize >= FS_MAX}
+            className="w-5 h-5 flex items-center justify-center text-amber-500 hover:text-amber-700 hover:bg-amber-100 rounded text-sm leading-none disabled:opacity-30"
+            title="放大字體"
+          >+</button>
+        </div>
       </div>
 
       {/* 交接事項 */}
-      <div className="flex flex-col gap-0.5">
-        <span className="text-[10px] text-amber-600 font-medium">交接事項</span>
+      <div className="flex flex-col gap-0.5 flex-1 min-h-0">
+        <span className="text-xs text-amber-600 font-medium">交接事項</span>
         <textarea
           value={contentVal}
           onChange={e => { setContentVal(e.target.value); debouncedSave({ content: e.target.value }) }}
           placeholder={isAdmin ? '輸入交接備註…' : '（無內容）'}
           disabled={!isAdmin}
-          rows={8}
-          className="w-full text-[10px] bg-white border border-amber-200 rounded px-1.5 py-1 text-slate-700 outline-none focus:border-amber-400 resize-none placeholder-amber-300 disabled:bg-transparent disabled:border-transparent leading-relaxed"
+          style={{ fontSize }}
+          className="w-full flex-1 min-h-0 bg-white border border-amber-200 rounded px-1.5 py-1 text-slate-700 outline-none focus:border-amber-400 resize-none placeholder-amber-300 disabled:bg-transparent disabled:border-transparent leading-relaxed"
         />
       </div>
 

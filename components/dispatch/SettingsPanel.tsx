@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useApp } from '@/lib/store'
 import { createClient } from '@/lib/supabase/client'
 
@@ -201,10 +201,17 @@ function ScrappedTab() {
 
 // ── 狀態顏色 ──────────────────────────────────────────────
 function ColorsTab() {
-  const { statusColors } = useApp()
+  const { statusColors, applyStatusColors } = useApp()
   const supabase = createClient()
   const [colors, setColors] = useState({ ...statusColors })
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const isEditing = useRef(false)
+
+  // store 完成 loadAllData 後同步最新顏色
+  useEffect(() => {
+    if (!isEditing.current) setColors({ ...statusColors })
+  }, [statusColors])
 
   const labels: Record<string, string> = {
     available_regular: '可用車（一般車）',
@@ -218,7 +225,14 @@ function ColorsTab() {
   }
 
   const handleSave = async () => {
-    await supabase.from('status_colors').update({ ...colors, updated_at: new Date().toISOString() }).eq('id', 1)
+    setSaveError('')
+    // 只送 labels 裡有的欄位，避免把 DB 不存在的欄位（如 available_shuangwo）送出去
+    const colorsToSave = Object.fromEntries(Object.keys(labels).map(k => [k, (colors as Record<string, string>)[k]]))
+    const { error } = await supabase.from('status_colors').update({ ...colorsToSave, updated_at: new Date().toISOString() }).eq('id', 1)
+    if (error) { setSaveError('儲存失敗：' + error.message); return }
+    // 不依賴 Realtime，直接更新 store 讓車廂顏色即時生效
+    applyStatusColors(colors as import('@/types').StatusColors)
+    isEditing.current = false
     setSaved(true); setTimeout(() => setSaved(false), 2000)
   }
 
@@ -228,17 +242,16 @@ function ColorsTab() {
         {Object.entries(labels).map(([key, label]) => (
           <div key={key} className="flex items-center gap-3">
             <span className="flex-1 text-slate-600 text-xs">{label}</span>
-            <div className="flex items-center gap-2">
-              <input type="color" value={(colors as Record<string, string>)[key] || '#ffffff'}
-                onChange={e => { setSaved(false); setColors(p => ({ ...p, [key]: e.target.value })) }}
-                className="w-8 h-7 rounded cursor-pointer border border-slate-300" />
-            </div>
+            <input type="color" value={(colors as Record<string, string>)[key] || '#ffffff'}
+              onChange={e => { isEditing.current = true; setSaved(false); setColors(p => ({ ...p, [key]: e.target.value })) }}
+              className="w-8 h-7 rounded cursor-pointer border border-slate-300" />
           </div>
         ))}
       </div>
       <div className="flex items-center gap-3">
         <button onClick={handleSave} className="bg-blue-600 hover:bg-blue-700 text-white rounded px-4 py-1.5 text-xs font-medium">儲存顏色</button>
         {saved && <span className="text-green-600 text-xs">✓ 已儲存</span>}
+        {saveError && <span className="text-red-500 text-xs">{saveError}</span>}
       </div>
     </div>
   )

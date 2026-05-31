@@ -22,7 +22,8 @@ function TestAreaSlot({ areaId, slotIndex, carId }: { areaId: number; slotIndex:
     if (val === carId) return
     const area = testAreas.find(a => a.id === areaId)
     if (!area) return
-    const newSlots = [...area.slots] as (string | null)[]
+    // 補齊 9 格再寫入（相容舊 6 格資料）
+    const newSlots = Array.from({ length: 9 }, (_, i) => area.slots[i] ?? null) as (string | null)[]
     newSlots[slotIndex] = val || null
     await updateTestArea(areaId, { slots: newSlots })
   }
@@ -74,7 +75,7 @@ function TestAreaCard({ area }: { area: TestArea }) {
   }
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 p-2">
+    <div className="bg-white rounded-lg border border-slate-200 p-2 w-36">
       {/* 名稱列 */}
       <div className="flex items-center gap-1 mb-1.5">
         {editingName ? (
@@ -85,7 +86,7 @@ function TestAreaCard({ area }: { area: TestArea }) {
         ) : (
           <>
             <span className="flex-1 text-xs font-semibold text-slate-700">
-              {area.name || `測試區 ${area.id}`}
+              {area.name || `自定義區 ${area.id}`}
             </span>
             {isAdmin && (
               <button onClick={() => setEditingName(true)} className="text-[10px] text-slate-400 hover:text-slate-600" title="改名">✏</button>
@@ -94,31 +95,34 @@ function TestAreaCard({ area }: { area: TestArea }) {
         )}
       </div>
 
-      {/* 6 個車格（3+3 兩排） */}
+      {/* 9 個車格（3×3） */}
       <div className="grid grid-cols-3 gap-1 mb-1.5">
-        {area.slots.map((carId, i) => (
+        {Array.from({ length: 9 }, (_, i) => area.slots[i] ?? null).map((carId, i) => (
           <TestAreaSlot key={i} areaId={area.id} slotIndex={i} carId={carId} />
         ))}
       </div>
 
-      {/* 備註 */}
-      {editingNotes ? (
-        <textarea autoFocus value={notesVal} onChange={e => setNotesVal(e.target.value)}
-          onBlur={saveNotes}
-          className="w-full text-[10px] bg-slate-50 text-slate-600 px-1 py-0.5 rounded outline-none border border-blue-400 resize-none"
-          rows={2}
-        />
-      ) : (
-        <div className="flex items-center gap-1">
-          <p className="flex-1 text-[10px] text-slate-400 truncate">
-            {area.notes || '（無備註）'}
-          </p>
-          {isAdmin && (
+      {/* 備註：標題列固定顯示編輯按鈕，內容獨立一行避免覆蓋 */}
+      <div>
+        <div className="flex items-center justify-between mb-0.5">
+          <span className="text-[10px] text-slate-400">備註</span>
+          {isAdmin && !editingNotes && (
             <button onClick={() => { setNotesVal(area.notes); setEditingNotes(true) }}
               className="text-[10px] text-slate-400 hover:text-slate-600 flex-shrink-0" title="編輯備註">✏</button>
           )}
         </div>
-      )}
+        {editingNotes ? (
+          <textarea autoFocus value={notesVal} onChange={e => setNotesVal(e.target.value)}
+            onBlur={saveNotes}
+            className="w-full text-[10px] bg-slate-50 text-slate-600 px-1 py-0.5 rounded outline-none border border-blue-400 resize-none"
+            rows={2}
+          />
+        ) : (
+          <p className="text-[10px] text-blue-600 break-words whitespace-pre-wrap">
+            {area.notes || '（無備註）'}
+          </p>
+        )}
+      </div>
     </div>
   )
 }
@@ -133,9 +137,9 @@ export function TestAreaPanel({ mode = 'sidebar' }: TestAreaPanelProps) {
 
   const header = (
     <div className="flex items-center gap-2 mb-2 flex-shrink-0">
-      <span className="text-slate-600 text-xs font-semibold">測試區</span>
+      <span className="text-slate-600 text-base font-semibold">自定義區</span>
       <div className="flex items-center gap-0.5">
-        {[0, 1, 2, 3, 4, 5, 6].map(n => (
+        {[0, 1, 2, 3, 4, 5, 6, 7, 8].map(n => (
           <button key={n} onClick={() => isAdmin && setVisibleTestAreas(n)}
             className={`w-5 h-5 text-[10px] rounded ${visibleTestAreas === n ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
           >{n}</button>

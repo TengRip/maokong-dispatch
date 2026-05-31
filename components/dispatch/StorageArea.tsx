@@ -24,7 +24,9 @@ export function StorageArea({
     data: { location },
   })
 
-  const storedCars = Object.values(cars).filter(c => c.location === location)
+  const storedCars = Object.values(cars).filter(
+    c => c.location === location && c.status !== 'scrapped'
+  )
 
   return (
     <div
@@ -33,25 +35,27 @@ export function StorageArea({
         ${isOver ? 'border-blue-400 bg-blue-50' : 'border-slate-200 bg-slate-50'}
       `}
     >
-      <div className={`flex items-center justify-between px-2 ${collapsed ? 'py-1.5' : 'pt-2 px-2 pb-1'}`}>
+      <div className="px-1.5 pt-1.5 pb-0.5 flex items-center justify-between">
         <span className="text-slate-700 text-xs font-semibold">{label}</span>
-        <div className="flex items-center gap-2">
-          <span className="text-slate-400 text-[10px]">{storedCars.length}/{maxSlots}</span>
-          {collapsible && (
-            <button
-              onClick={() => setCollapsed(v => !v)}
-              className="text-slate-400 hover:text-slate-600 text-[10px] border border-slate-300 rounded px-1 py-0.5 leading-none transition-colors bg-white"
-            >
-              {collapsed ? '▼ 展開' : '▲ 收折'}
-            </button>
-          )}
-        </div>
+        <span className="text-slate-400 text-[9px]">{storedCars.length}/{maxSlots}</span>
       </div>
+      {collapsible && (
+        <div className="px-1.5 pb-1">
+          <button
+            onClick={() => setCollapsed(v => !v)}
+            className="w-[110px] text-slate-400 hover:text-slate-600 text-[9px] border border-slate-300 rounded px-1 py-0.5 leading-none transition-colors bg-white"
+          >
+            {collapsed ? '▼ 展開列車' : '▲ 收折列車'}
+          </button>
+        </div>
+      )}
 
       {!collapsed && (
-        <div className="px-2 pb-2 flex flex-wrap gap-1">
+        <div className="px-1.5 pb-1.5 flex flex-wrap gap-1">
           {storedCars.map(car => (
-            <CarTag key={car.id} carId={car.id} draggableId={`storage_${location}_${car.id}`} />
+            <div key={car.id} style={{ width: 34, height: 28 }}>
+              <CarTag carId={car.id} draggableId={`storage_${location}_${car.id}`} compact />
+            </div>
           ))}
           {storedCars.length === 0 && (
             <span className="text-slate-400 text-[10px]">（空）</span>
