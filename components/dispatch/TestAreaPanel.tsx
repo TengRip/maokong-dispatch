@@ -119,7 +119,7 @@ function TestAreaCard({ area }: { area: TestArea }) {
               {area.name || `自定義區 ${area.id}`}
             </span>
             {isAdmin && (
-              <button onClick={() => setEditingName(true)} className="text-[10px] text-slate-400 hover:text-slate-600" title="改名">✏</button>
+              <button onClick={() => setEditingName(true)} className="text-base leading-none p-1 text-slate-400 hover:text-slate-700 rounded hover:bg-slate-100" title="改名">✏️</button>
             )}
           </>
         )}
@@ -149,7 +149,7 @@ function TestAreaCard({ area }: { area: TestArea }) {
           <span className="text-[10px] text-slate-400">備註</span>
           {isAdmin && !editingNotes && (
             <button onClick={() => { setNotesVal(area.notes); setEditingNotes(true) }}
-              className="text-[10px] text-slate-400 hover:text-slate-600 flex-shrink-0" title="編輯備註">✏</button>
+              className="text-base leading-none p-1 text-slate-400 hover:text-slate-700 rounded hover:bg-slate-100 flex-shrink-0" title="編輯備註">✏️</button>
           )}
         </div>
         {editingNotes ? (

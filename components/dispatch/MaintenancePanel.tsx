@@ -48,7 +48,7 @@ function MaintenanceUnitCard({ unit }: { unit: MaintenanceUnit }) {
         )}
         {isAdmin && !editingName && (
           <button onClick={() => setEditingName(true)}
-            className="text-[10px] text-slate-400 hover:text-slate-600 ml-1 px-1">✏</button>
+            className="text-base leading-none p-1 text-slate-400 hover:text-slate-700 rounded hover:bg-slate-100 ml-1">✏️</button>
         )}
       </div>
 
