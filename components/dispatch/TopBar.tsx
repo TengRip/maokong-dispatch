@@ -169,13 +169,17 @@ export function TopBar() {
       backgroundColor: '#f1f5f9',
       logging: false,
     })
-    const url = canvas.toDataURL('image/png')
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `貓空纜車調度_${getDateStr()}.png`
-    document.body.appendChild(a)
-    a.click()
-    document.body.removeChild(a)
+    canvas.toBlob((blob) => {
+      if (!blob) return
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `貓空纜車調度_${getDateStr()}.png`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    }, 'image/png')
   }
 
   return (
