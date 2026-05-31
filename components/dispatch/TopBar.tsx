@@ -161,25 +161,30 @@ export function TopBar() {
 
   const handleExportImage = async () => {
     const el = document.getElementById('dispatch-app')
-    if (!el) return
-    const { default: html2canvas } = await import('html2canvas')
-    const canvas = await html2canvas(el, {
-      scale: 2,
-      useCORS: true,
-      backgroundColor: '#f1f5f9',
-      logging: false,
-    })
-    canvas.toBlob((blob) => {
-      if (!blob) return
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `貓空纜車調度_${getDateStr()}.png`
-      document.body.appendChild(a)
-      a.click()
-      document.body.removeChild(a)
-      URL.revokeObjectURL(url)
-    }, 'image/png')
+    if (!el) { alert('找不到截圖元素'); return }
+    try {
+      const { default: html2canvas } = await import('html2canvas')
+      const canvas = await html2canvas(el, {
+        scale: 1,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#f1f5f9',
+        logging: false,
+      })
+      canvas.toBlob((blob) => {
+        if (!blob) { alert('toBlob 失敗'); return }
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = `貓空纜車調度_${getDateStr()}.png`
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
+      }, 'image/png')
+    } catch (e) {
+      alert(`截圖失敗：${e}`)
+    }
   }
 
   return (
