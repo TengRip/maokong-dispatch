@@ -35,6 +35,8 @@ export function SnapshotPanel() {
   const [saveLabel, setSaveLabel] = useState('')
   const [saving, setSaving] = useState(false)
   const [saveOk, setSaveOk] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<SnapshotRow | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   if (!isAdmin) return null
 
@@ -142,6 +144,15 @@ export function SnapshotPanel() {
       setRestoreError('還原失敗，請稍後再試')
       setRestoring(false)
     }
+  }
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return
+    setDeleting(true)
+    await supabase.from('snapshots').delete().eq('id', deleteTarget.id)
+    setSnapshots(prev => prev.filter(s => s.id !== deleteTarget.id))
+    setDeleting(false)
+    setDeleteTarget(null)
   }
 
   // 依台北日期分組
@@ -252,6 +263,13 @@ export function SnapshotPanel() {
                             >
                               還原
                             </button>
+                            <button
+                              onClick={() => setDeleteTarget(snap)}
+                              className="text-xs bg-red-100 hover:bg-red-200 text-red-600 rounded px-2 py-1"
+                              title="刪除此筆記錄"
+                            >
+                              🗑
+                            </button>
                           </div>
                         </div>
                       )
@@ -261,6 +279,34 @@ export function SnapshotPanel() {
               ))}
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* 刪除確認 Dialog */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div className="absolute inset-0 bg-black/40" onClick={() => { if (!deleting) setDeleteTarget(null) }} />
+          <div className="relative z-50 bg-white rounded-xl p-6 w-72 shadow-2xl border border-slate-200">
+            <div className="text-3xl mb-2 text-center">🗑️</div>
+            <h3 className="font-bold text-slate-800 text-center mb-1">刪除班次記錄</h3>
+            <p className="text-slate-500 text-sm text-center mb-4">
+              確定要刪除「{deleteTarget.label}」？<br />刪除後無法復原。
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="flex-1 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 rounded px-3 py-2 text-sm"
+              >取消</button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white rounded px-3 py-2 text-sm font-medium"
+              >
+                {deleting ? '刪除中…' : '確認刪除'}
+              </button>
+            </div>
           </div>
         </div>
       )}
