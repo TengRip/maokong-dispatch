@@ -92,7 +92,7 @@ function LoopSlot({ index, carId, onWarn, sw, sh }: {
       ) : carId ? (
         <CarTag carId={carId} draggableId={`ml_${index}_${carId}`} compact />
       ) : (
-        <span className="text-slate-500 text-[10px]">{index + 1}</span>
+        <span className="text-slate-500 text-[12px]">{index + 1}</span>
       )}
     </div>
   )
