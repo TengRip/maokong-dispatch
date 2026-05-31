@@ -8,9 +8,10 @@ import { SettingsPanel } from './SettingsPanel'
 import { DiagnosticsPanel } from './DiagnosticsPanel'
 import { NotesPanel } from './NotesPanel'
 import { SnapshotPanel } from './SnapshotPanel'
+import * as XLSX from 'xlsx'
 
 export function TopBar() {
-  const { userRole, userEmail, saveSnapshot, cars, maintenanceUnits, setHighlightedCarId, mainLine } = useApp()
+  const { userRole, userEmail, saveSnapshot, cars, maintenanceUnits, setHighlightedCarId, mainLine, testAreas, weeklySchedule } = useApp()
   const [searchVal, setSearchVal] = useState('')
   const [searchResult, setSearchResult] = useState<string | null>(null)
   const [snapshotLabel, setSnapshotLabel] = useState('')
@@ -59,6 +60,120 @@ export function TopBar() {
   const handleLogout = async () => {
     await supabase.auth.signOut()
     router.push('/login')
+  }
+
+  const getDateStr = () => {
+    const now = new Date()
+    return now.toLocaleDateString('zh-TW', { timeZone: 'Asia/Taipei' })
+      .replace(/\//g, '-') + '_' +
+      now.toLocaleTimeString('zh-TW', { timeZone: 'Asia/Taipei', hour: '2-digit', minute: '2-digit' })
+      .replace(':', '')
+  }
+
+  const TYPE_LABEL: Record<string, string> = {
+    regular: '一般', crystal: '水晶', maintenance_vehicle: '維修車',
+    shuangwo: '雙握', dong: '洞',
+  }
+  const STATUS_LABEL: Record<string, string> = {
+    available: '可用', unavailable: '不可用', scrapped: '報廢',
+    controlled: '管控', maintenance_needed: '有維修需求', other: '其他',
+  }
+  const LOC_LABEL: Record<string, string> = {
+    main_line: '正線', zhuanjiaoer: '轉角二站', maokong: '貓空站',
+    test_area: '自定義區', weekly_schedule: '週排程', unassigned: '未分配',
+  }
+  const DAY_LABEL: Record<string, string> = {
+    monday: '一', tuesday: '二', wednesday: '三', thursday: '四', friday: '五',
+  }
+
+  const handleExportExcel = () => {
+    const wb = XLSX.utils.book_new()
+
+    // Sheet 1：正線排列
+    const mainRows = mainLine.positions.map((cid, i) => {
+      const car = cid ? cars[cid] : null
+      return {
+        '格位': i + 1,
+        '車號': cid ?? '（空）',
+        '車型': car ? (TYPE_LABEL[car.type] ?? car.type) : '',
+        '狀態': car ? (STATUS_LABEL[car.status] ?? car.status) : '',
+        '備註': car?.notes ?? '',
+      }
+    })
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(mainRows), `正線${mainLine.mode}車`)
+
+    // Sheet 2：全車廂狀態
+    const carRows = Object.values(cars).sort((a, b) => {
+      const n = (s: string) => isNaN(+s) ? 9999 : +s
+      return n(a.id) - n(b.id)
+    }).map(car => ({
+      '車號': car.id,
+      '車型': TYPE_LABEL[car.type] ?? car.type,
+      '狀態': STATUS_LABEL[car.status] ?? car.status,
+      '所在區域': LOC_LABEL[car.location] ?? car.location,
+      '基準車': car.is_reference ? '★' : '',
+      '備註': car.notes ?? '',
+    }))
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(carRows), '車廂狀態')
+
+    // Sheet 3：自定義區
+    const testRows: Record<string, string>[] = []
+    testAreas.forEach(ta => {
+      ta.slots.forEach((cid, i) => {
+        testRows.push({
+          '區域名稱': ta.name,
+          '格位': String(i + 1),
+          '車號': cid ?? '（空）',
+          '車型': cid && cars[cid] ? (TYPE_LABEL[cars[cid].type] ?? '') : '',
+          '狀態': cid && cars[cid] ? (STATUS_LABEL[cars[cid].status] ?? '') : '',
+        })
+      })
+    })
+    if (testRows.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(testRows), '自定義區')
+
+    // Sheet 4：維修排程
+    const maintenanceRows: Record<string, string>[] = []
+    maintenanceUnits.forEach(mu => {
+      mu.car_ids.forEach(cid => {
+        maintenanceRows.push({
+          '維修組別': mu.name,
+          '車號': cid,
+          '車型': cars[cid] ? (TYPE_LABEL[cars[cid].type] ?? '') : '',
+        })
+      })
+    })
+    if (maintenanceRows.length) XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(maintenanceRows), '維修排程')
+
+    // Sheet 5：週排程
+    const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday']
+    const maxSlots = Math.max(...days.map(d => weeklySchedule[d]?.length ?? 0), 0)
+    if (maxSlots > 0) {
+      const weekRows = Array.from({ length: maxSlots }, (_, i) => {
+        const row: Record<string, string> = { '格位': String(i + 1) }
+        days.forEach(d => { row[`週${DAY_LABEL[d]}`] = weeklySchedule[d]?.[i] ?? '' })
+        return row
+      })
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(weekRows), '週排程')
+    }
+
+    XLSX.writeFile(wb, `貓空纜車調度_${getDateStr()}.xlsx`)
+  }
+
+  const handleExportImage = async () => {
+    const el = document.getElementById('dispatch-app')
+    if (!el) return
+    const { default: html2canvas } = await import('html2canvas')
+    const canvas = await html2canvas(el, {
+      scale: 2,
+      useCORS: true,
+      backgroundColor: '#f1f5f9',
+      logging: false,
+    })
+    const url = canvas.toDataURL('image/png')
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `貓空纜車調度_${getDateStr()}.png`
+    a.click()
   }
 
   return (
@@ -137,6 +252,24 @@ export function TopBar() {
           )}
         </div>
       )}
+
+      {/* 匯出按鈕 */}
+      <div className="flex items-center gap-1">
+        <button
+          onClick={handleExportExcel}
+          className="text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded px-2 py-1 whitespace-nowrap"
+          title="匯出 Excel"
+        >
+          📊 Excel
+        </button>
+        <button
+          onClick={handleExportImage}
+          className="text-xs bg-purple-600 hover:bg-purple-500 text-white rounded px-2 py-1 whitespace-nowrap"
+          title="截圖存檔"
+        >
+          📷 截圖
+        </button>
+      </div>
 
       {/* 設定按鈕 + 帳號資訊 */}
       <div className="flex items-center gap-2 ml-2">

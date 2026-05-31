@@ -18,7 +18,7 @@ export default async function HomePage() {
   return (
     <AppProvider userRole={role} userEmail={user.email ?? ''}>
       <DragHandler>
-        <div className="h-screen flex flex-col bg-slate-100 overflow-hidden">
+        <div id="dispatch-app" className="h-screen flex flex-col bg-slate-100 overflow-hidden">
           <TopBar />
           <MainLayout />
         </div>
