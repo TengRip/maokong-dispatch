@@ -16,7 +16,7 @@ interface AppState {
   bulletin: BulletinData
   userRole: 'admin' | 'guest'
   userEmail: string
-  highlightedCarId: string | null
+  highlightedCarIds: string[]
 }
 
 interface AppActions {
@@ -32,7 +32,7 @@ interface AppActions {
   updateWeeklySchedule: (day: string, slots: (string | null)[]) => Promise<void>
   setShowMaintenancePanel: (show: boolean) => void
   setVisibleTestAreas: (count: number) => void
-  setHighlightedCarId: (id: string | null) => void
+  setHighlightedCarIds: (ids: string[]) => void
   updateBulletin: (updates: Partial<BulletinData>) => Promise<void>
   saveSnapshot: (label: string) => Promise<void>
   logOperation: (action: string, carId?: string, from?: string, to?: string, detail?: string) => Promise<void>
@@ -70,7 +70,7 @@ export function AppProvider({ children, userRole, userEmail }: {
   const [showMaintenancePanel, setShowMaintenancePanel] = useState(false)
   const [visibleTestAreas, setVisibleTestAreas] = useState(6)
   const [bulletin, setBulletin] = useState<BulletinData>({ title: '佈告欄', date: '', content: '', maintenance_notes: '' })
-  const [highlightedCarId, setHighlightedCarId] = useState<string | null>(null)
+  const [highlightedCarIds, setHighlightedCarIds] = useState<string[]>([])
 
   // 初始化載入資料
   useEffect(() => {
@@ -510,11 +510,11 @@ export function AppProvider({ children, userRole, userEmail }: {
   return (
     <AppContext.Provider value={{
       cars, mainLine, testAreas, maintenanceUnits, weeklySchedule, statusColors,
-      showMaintenancePanel, visibleTestAreas, bulletin, userRole, userEmail, highlightedCarId,
+      showMaintenancePanel, visibleTestAreas, bulletin, userRole, userEmail, highlightedCarIds,
       moveCar, updateCarStatus, setReferencecar, updateMainLineMode,
       updateMainLinePosition, extractCarsFrom130To108, switchDirectlyTo108,
       updateTestArea, updateMaintenanceUnit, updateWeeklySchedule,
-      setShowMaintenancePanel, setVisibleTestAreas, setHighlightedCarId,
+      setShowMaintenancePanel, setVisibleTestAreas, setHighlightedCarIds,
       updateBulletin, saveSnapshot, logOperation, updateCarNotes, applyStatusColors,
     }}>
       {children}

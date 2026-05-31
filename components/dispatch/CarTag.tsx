@@ -24,7 +24,7 @@ export function CarTag({ carId, draggableId, compact = false, noContextMenu = fa
     cars, mainLine, testAreas, weeklySchedule,
     userRole, moveCar, updateCarStatus, setReferencecar,
     updateMainLinePosition, updateTestArea, updateWeeklySchedule,
-    highlightedCarId, updateCarNotes,
+    highlightedCarIds, updateCarNotes,
   } = useApp()
   const color = useCarColor(carId)
   const car = cars[carId]
@@ -135,7 +135,7 @@ export function CarTag({ carId, draggableId, compact = false, noContextMenu = fa
           border border-white/20 shadow-sm transition-opacity
           ${compact ? 'text-sm w-full h-full' : 'text-xs px-2 py-1 min-w-[2.5rem]'}
           ${isDragging ? 'z-50' : ''}
-          ${highlightedCarId === carId ? 'car-highlight' : ''}
+          ${highlightedCarIds.includes(carId) ? 'car-highlight' : ''}
         `}
       >
         {carId}

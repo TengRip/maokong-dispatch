@@ -11,7 +11,7 @@ import { SnapshotPanel } from './SnapshotPanel'
 import * as XLSX from 'xlsx'
 
 export function TopBar() {
-  const { userRole, userEmail, saveSnapshot, cars, maintenanceUnits, setHighlightedCarId, mainLine, testAreas, weeklySchedule } = useApp()
+  const { userRole, userEmail, saveSnapshot, cars, maintenanceUnits, setHighlightedCarIds, mainLine, testAreas, weeklySchedule } = useApp()
   const [searchVal, setSearchVal] = useState('')
   const [searchResult, setSearchResult] = useState<string | null>(null)
   const [snapshotLabel, setSnapshotLabel] = useState('')
@@ -23,10 +23,10 @@ export function TopBar() {
   const maintenanceCarIds = new Set(maintenanceUnits.flatMap(u => u.car_ids))
 
   const handleSearch = () => {
-    const cid = searchVal.trim().toUpperCase()
-    if (!cid) return
-    const car = cars[cid]
-    if (!car) { setSearchResult('找不到此車號'); return }
+    const raw = searchVal.trim().toUpperCase()
+    if (!raw) return
+    const cids = raw.split(/\s+/).filter(Boolean)
+
     const locationMap: Record<string, string> = {
       main_line: '正線區',
       zhuanjiaoer: '轉角二站儲車區',
@@ -35,17 +35,28 @@ export function TopBar() {
       weekly_schedule: '週排程區',
       unassigned: '未分配',
     }
-    const loc = locationMap[car.location] ?? car.location
-    let extra = ''
-    if (car.location === 'main_line') {
-      const slot = mainLine.positions.indexOf(cid)
-      extra = slot !== -1 ? `（第 ${slot + 1} 格）` : '（位置異常，建議執行診斷）'
-    } else if (car.location_slot !== null && car.location_slot !== undefined) {
-      extra = `（格 ${car.location_slot + 1}）`
-    }
-    const maintenance = maintenanceCarIds.has(cid) ? ' ⚠ 有維修需求' : ''
-    setSearchResult(`${cid}：${loc}${extra}${maintenance}`)
-    setHighlightedCarId(cid)
+
+    const found: string[] = []
+    const lines: string[] = []
+
+    cids.forEach(cid => {
+      const car = cars[cid]
+      if (!car) { lines.push(`${cid}：找不到`); return }
+      found.push(cid)
+      const loc = locationMap[car.location] ?? car.location
+      let extra = ''
+      if (car.location === 'main_line') {
+        const slot = mainLine.positions.indexOf(cid)
+        extra = slot !== -1 ? `（第 ${slot + 1} 格）` : '（位置異常）'
+      } else if (car.location_slot !== null && car.location_slot !== undefined) {
+        extra = `（格 ${car.location_slot + 1}）`
+      }
+      const maintenance = maintenanceCarIds.has(cid) ? ' ⚠' : ''
+      lines.push(`${cid}：${loc}${extra}${maintenance}`)
+    })
+
+    setSearchResult(lines.join('　'))
+    setHighlightedCarIds(found)
   }
 
   const handleSaveSnapshot = async () => {
@@ -214,15 +225,15 @@ export function TopBar() {
         <div className="relative flex items-center">
           <input
             value={searchVal}
-            onChange={e => { setSearchVal(e.target.value); setSearchResult(null); if (!e.target.value) setHighlightedCarId(null) }}
+            onChange={e => { setSearchVal(e.target.value); setSearchResult(null); if (!e.target.value) setHighlightedCarIds([]) }}
             onKeyDown={e => { if (e.key === 'Enter') handleSearch() }}
-            placeholder="搜尋車號…"
-            className="w-24 text-xs bg-slate-600 border border-slate-500 rounded px-2 py-1 text-white placeholder-slate-400 focus:outline-none focus:border-blue-400 pr-5"
-            maxLength={4}
+            placeholder="搜尋車號（空格隔開多台）…"
+            className="w-40 text-xs bg-slate-600 border border-slate-500 rounded px-2 py-1 text-white placeholder-slate-400 focus:outline-none focus:border-blue-400 pr-5"
+            maxLength={60}
           />
           {searchVal && (
             <button
-              onClick={() => { setSearchVal(''); setSearchResult(null); setHighlightedCarId(null) }}
+              onClick={() => { setSearchVal(''); setSearchResult(null); setHighlightedCarIds([]) }}
               className="absolute right-1 text-slate-400 hover:text-white text-xs leading-none"
             >✕</button>
           )}
