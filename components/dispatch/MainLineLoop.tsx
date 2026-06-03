@@ -88,7 +88,7 @@ function LoopSlot({ index, carId, onWarn, sw, sh }: {
           maxLength={4}
         />
       ) : carId ? (
-        <CarTag carId={carId} draggableId={`ml_${index}_${carId}`} compact mainLine />
+        <CarTag carId={carId} draggableId={`ml_${index}_${carId}`} compact largeFont />
       ) : (
         <span className="text-slate-500 text-[12px]">{index + 1}</span>
       )}
