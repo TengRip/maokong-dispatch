@@ -26,6 +26,8 @@ export function StorageArea({
   const storedCars = Object.values(cars).filter(
     c => c.location === location && c.status !== 'scrapped'
   )
+  // 洞車、雙握車不列入台數計算
+  const countedCars = storedCars.filter(c => c.type !== 'dong' && c.type !== 'shuangwo')
 
   return (
     <div
@@ -36,7 +38,7 @@ export function StorageArea({
     >
       <div className="px-1.5 pt-1.5 pb-0.5 flex items-center justify-between">
         <span className="text-slate-700 text-xs font-semibold">{label}</span>
-        <span className="text-slate-400 text-[9px]">{storedCars.length} 台</span>
+        <span className="text-slate-400 text-[9px]">{countedCars.length} 台</span>
       </div>
       {collapsible && (
         <div className="px-1.5 pb-1">

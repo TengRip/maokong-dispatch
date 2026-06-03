@@ -19,8 +19,9 @@ function CollapsedStorageStrip() {
     id: 'storage_maokong',
     data: { location: 'maokong' },
   })
-  const countZje = Object.values(cars).filter(c => c.location === 'zhuanjiaoer').length
-  const countMk = Object.values(cars).filter(c => c.location === 'maokong').length
+  // 洞車、雙握車不列入台數計算
+  const countZje = Object.values(cars).filter(c => c.location === 'zhuanjiaoer' && c.type !== 'dong' && c.type !== 'shuangwo').length
+  const countMk = Object.values(cars).filter(c => c.location === 'maokong' && c.type !== 'dong' && c.type !== 'shuangwo').length
 
   return (
     <div className="flex-1 flex flex-col">
