@@ -10,6 +10,7 @@ interface CarTagProps {
   draggableId?: string
   compact?: boolean
   noContextMenu?: boolean  // 用於維修排程等「標示用途」，不開右鍵選單
+  mainLine?: boolean       // 正線格子：字體加大
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -19,7 +20,7 @@ const STATUS_LABELS: Record<string, string> = {
   other:        '🟢 其他',
 }
 
-export function CarTag({ carId, draggableId, compact = false, noContextMenu = false }: CarTagProps) {
+export function CarTag({ carId, draggableId, compact = false, noContextMenu = false, mainLine = false }: CarTagProps) {
   const {
     cars, mainLine, testAreas, weeklySchedule,
     userRole, moveCar, updateCarStatus, setReferencecar,
@@ -139,7 +140,7 @@ export function CarTag({ carId, draggableId, compact = false, noContextMenu = fa
         className={`
           relative inline-flex items-center justify-center rounded-sm font-bold select-none
           border border-white/20 shadow-sm transition-opacity
-          ${compact ? 'text-base w-full h-full' : 'text-xs px-2 py-1 min-w-[2.5rem]'}
+          ${compact ? `${mainLine ? 'text-base' : 'text-sm'} w-full h-full` : 'text-xs px-2 py-1 min-w-[2.5rem]'}
           ${isDragging ? 'z-50' : ''}
           ${highlightedCarIds.includes(carId) ? 'car-highlight' : ''}
         `}

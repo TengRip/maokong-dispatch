@@ -22,6 +22,7 @@ function CollapsedStorageStrip() {
   // 洞車、雙握車、報廢車不列入台數計算（與 StorageArea 邏輯一致）
   const countZje = Object.values(cars).filter(c => c.location === 'zhuanjiaoer' && c.type !== 'dong' && c.type !== 'shuangwo' && c.status !== 'scrapped').length
   const countMk = Object.values(cars).filter(c => c.location === 'maokong' && c.type !== 'dong' && c.type !== 'shuangwo' && c.status !== 'scrapped').length
+  const countScrapped = Object.values(cars).filter(c => c.status === 'scrapped').length
 
   return (
     <div className="flex-1 flex flex-col">
@@ -53,6 +54,15 @@ function CollapsedStorageStrip() {
         {isOverMk && (
           <span className="text-[7px] text-blue-500 font-medium" style={{ writingMode: 'vertical-rl' }}>放開</span>
         )}
+      </div>
+      <div className="border-t border-slate-200 mx-1" />
+      <div className="flex-1 flex flex-col items-center justify-start pt-3 gap-2">
+        <span className="text-[8px] text-red-400 font-semibold" style={{ writingMode: 'vertical-rl', letterSpacing: '0.1em' }}>
+          停用車廂
+        </span>
+        <span className="text-xs text-red-500 font-bold bg-red-50 rounded w-6 h-6 flex items-center justify-center">
+          {countScrapped}
+        </span>
       </div>
     </div>
   )
