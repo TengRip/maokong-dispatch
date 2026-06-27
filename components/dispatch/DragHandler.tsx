@@ -90,10 +90,18 @@ export function DragHandler({ children }: { children: React.ReactNode }) {
     // 追蹤清除來源後的週排程狀態，避免 stale closure 造成同車重複顯示
     let latestWeeklySchedule = weeklySchedule
 
+    // 記錄來源槽位，供 moveCar 失敗時還原用
+    let originalMainLineIdx = -1
+    let restoredWeeklySlots: (string | null)[] | null = null
+    let restoredWeeklyDay = ''
+
     // ── 清除來源槽位 ──────────────────────────────────
     if (fromLocation === 'main_line') {
       const idx = mainLine.positions.indexOf(carId)
-      if (idx !== -1) await updateMainLinePosition(idx, null)
+      if (idx !== -1) {
+        originalMainLineIdx = idx
+        await updateMainLinePosition(idx, null)
+      }
 
     } else if (fromLocation === 'test_area') {
       const fromArea = testAreas.find(a => a.slots.includes(carId))
@@ -144,9 +152,23 @@ export function DragHandler({ children }: { children: React.ReactNode }) {
       }
       slots[toSlot] = carId
       await updateWeeklySchedule(toDay, slots)
+      // 記錄已寫入的週排程，供還原用
+      restoredWeeklySlots = slots
+      restoredWeeklyDay = toDay
     }
 
-    await moveCar(carId, toLocation, toSlot, fromLocation)
+    const success = await moveCar(carId, toLocation, toSlot, fromLocation)
+
+    // moveCar 失敗時（car.location 被 rollback），還原已清除的槽位，避免「位置異常」
+    if (!success) {
+      if (originalMainLineIdx !== -1) {
+        await updateMainLinePosition(originalMainLineIdx, carId)
+      }
+      if (restoredWeeklySlots && restoredWeeklyDay && toSlot !== undefined) {
+        restoredWeeklySlots[toSlot] = null
+        await updateWeeklySchedule(restoredWeeklyDay, restoredWeeklySlots)
+      }
+    }
   }
 
   const confirmPendingMove = async () => {

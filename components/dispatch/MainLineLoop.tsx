@@ -116,10 +116,11 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
       ))
     : 1
 
-  const leftIdx   = Array.from({ length: seg.left },   (_, i) => i)
-  const bottomIdx = Array.from({ length: seg.bottom },  (_, i) => seg.left + i)
-  const rightIdx  = Array.from({ length: seg.right },   (_, i) => seg.left + seg.bottom + i)
-  const topIdx    = Array.from({ length: seg.top },     (_, i) => seg.left + seg.bottom + seg.right + i)
+  // 順時針：上→右→下→左，slot 0 從上排最左開始遞增
+  const topIdx    = Array.from({ length: seg.top },    (_, i) => i)
+  const rightIdx  = Array.from({ length: seg.right },  (_, i) => seg.top + i)
+  const bottomIdx = Array.from({ length: seg.bottom }, (_, i) => seg.top + seg.right + i)
+  const leftIdx   = Array.from({ length: seg.left },   (_, i) => seg.top + seg.right + seg.bottom + i)
 
   const getSlotCar = (i: number) => positions[i] ?? null
   const filled = positions.filter(Boolean).length
@@ -129,20 +130,9 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
     data: { location: 'main_line', slot: -1 },
   })
 
-  const slotCenterX = (slotNum: number): number | null => {
-    const i = slotNum - 1
-    const { left: L, bottom: B, right: R, top: T } = seg
-    const total = L + B + R + T
-    if (i < 0 || i >= total) return null
-    if (i < L) return sw / 2
-    if (i < L + B) return rw + (i - L) * rw + sw / 2
-    if (i < L + B + R) return REF_W - sw / 2
-    const dPos = total - 1 - i
-    return rw + dPos * rw + sw / 2
-  }
-  // 依目前模式動態計算上排/下排中間格的 x 座標作為方向箭頭位置
-  const xTopArrow = slotCenterX(seg.left + seg.bottom + seg.right + Math.floor(seg.top / 2) + 1)
-  const xBotArrow = slotCenterX(seg.left + Math.floor(seg.bottom / 2) + 1)
+  // 上排/下排中間格的 x 座標（順時針：上排由左往右，下排由右往左）
+  const xTopArrow = rw + Math.floor(seg.top / 2) * rw + sw / 2
+  const xBotArrow = rw + Math.floor(seg.bottom / 2) * rw + sw / 2
 
   const [showExtract, setShowExtract] = useState(false)
   const [extractStart, setExtractStart] = useState('')
@@ -182,30 +172,30 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
           fill="none" stroke="#94a3b8" strokeWidth="1.5" rx="6" />
       </svg>
 
-      {/* 左側：由上往下 */}
-      {leftIdx.map((idx, dPos) => (
-        <div key={`l${idx}`} style={{ position: 'absolute', left: 0, top: rh + dPos * rh }}>
+      {/* 上排：由左往右（slot 0 在最左） */}
+      {topIdx.map((idx, dPos) => (
+        <div key={`t${idx}`} style={{ position: 'absolute', left: rw + dPos * rw, top: 0 }}>
           <LoopSlot index={idx} carId={getSlotCar(idx)} onWarn={setWarnMsg} sw={sw} sh={sh} />
         </div>
       ))}
 
-      {/* 下排：由左往右 */}
-      {bottomIdx.map((idx, dPos) => (
-        <div key={`b${idx}`} style={{ position: 'absolute', left: rw + dPos * rw, top: REF_H - sh }}>
-          <LoopSlot index={idx} carId={getSlotCar(idx)} onWarn={setWarnMsg} sw={sw} sh={sh} />
-        </div>
-      ))}
-
-      {/* 右側：由下往上 */}
-      {[...rightIdx].reverse().map((idx, dPos) => (
+      {/* 右側：由上往下 */}
+      {rightIdx.map((idx, dPos) => (
         <div key={`r${idx}`} style={{ position: 'absolute', left: REF_W - sw, top: rh + dPos * rh }}>
           <LoopSlot index={idx} carId={getSlotCar(idx)} onWarn={setWarnMsg} sw={sw} sh={sh} />
         </div>
       ))}
 
-      {/* 上排：由右往左 */}
-      {[...topIdx].reverse().map((idx, dPos) => (
-        <div key={`t${idx}`} style={{ position: 'absolute', left: rw + dPos * rw, top: 0 }}>
+      {/* 下排：由右往左 */}
+      {[...bottomIdx].reverse().map((idx, dPos) => (
+        <div key={`b${idx}`} style={{ position: 'absolute', left: rw + dPos * rw, top: REF_H - sh }}>
+          <LoopSlot index={idx} carId={getSlotCar(idx)} onWarn={setWarnMsg} sw={sw} sh={sh} />
+        </div>
+      ))}
+
+      {/* 左側：由下往上 */}
+      {[...leftIdx].reverse().map((idx, dPos) => (
+        <div key={`l${idx}`} style={{ position: 'absolute', left: 0, top: rh + dPos * rh }}>
           <LoopSlot index={idx} carId={getSlotCar(idx)} onWarn={setWarnMsg} sw={sw} sh={sh} />
         </div>
       ))}
@@ -254,7 +244,7 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
 
           {/* 左側去程箭頭 */}
           <div style={{ flexShrink: 0, width: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-            <span style={{ fontSize: 42, color: '#f97316', fontWeight: 900, lineHeight: 1 }}>↓</span>
+            <span style={{ fontSize: 42, color: '#f97316', fontWeight: 900, lineHeight: 1 }}>↑</span>
           </div>
 
           {/* 內容區（外框） */}
@@ -305,26 +295,22 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
 
           {/* 右側回程箭頭 */}
           <div style={{ flexShrink: 0, width: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-            <span style={{ fontSize: 42, color: '#f97316', fontWeight: 900, lineHeight: 1 }}>↑</span>
+            <span style={{ fontSize: 42, color: '#f97316', fontWeight: 900, lineHeight: 1 }}>↓</span>
           </div>
 
         </div>
 
       </div>
 
-      {/* ← 方向指示（上排，由右往左） */}
-      {xTopArrow !== null && (
-        <div style={{ position: 'absolute', left: xTopArrow - 20, top: rh + 4, pointerEvents: 'none', zIndex: 9 }}>
-          <span style={{ fontSize: 36, color: '#f97316', fontWeight: 900, lineHeight: 1 }}>←</span>
-        </div>
-      )}
+      {/* → 方向指示（上排，由左往右） */}
+      <div style={{ position: 'absolute', left: xTopArrow - 20, top: rh + 4, pointerEvents: 'none', zIndex: 9 }}>
+        <span style={{ fontSize: 36, color: '#f97316', fontWeight: 900, lineHeight: 1 }}>→</span>
+      </div>
 
-      {/* → 方向指示（下排，由左往右） */}
-      {xBotArrow !== null && (
-        <div style={{ position: 'absolute', left: xBotArrow - 20, bottom: rh + 4, pointerEvents: 'none', zIndex: 9 }}>
-          <span style={{ fontSize: 36, color: '#f97316', fontWeight: 900, lineHeight: 1 }}>→</span>
-        </div>
-      )}
+      {/* ← 方向指示（下排，由右往左） */}
+      <div style={{ position: 'absolute', left: xBotArrow - 20, bottom: rh + 4, pointerEvents: 'none', zIndex: 9 }}>
+        <span style={{ fontSize: 36, color: '#f97316', fontWeight: 900, lineHeight: 1 }}>←</span>
+      </div>
 
       {/* 警告 Modal */}
       {warnMsg && (

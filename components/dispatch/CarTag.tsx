@@ -22,14 +22,15 @@ const STATUS_LABELS: Record<string, string> = {
 
 export function CarTag({ carId, draggableId, compact = false, noContextMenu = false, largeFont = false }: CarTagProps) {
   const {
-    cars, mainLine, testAreas, weeklySchedule,
+    cars, mainLine, testAreas, weeklySchedule, maintenanceUnits,
     userRole, moveCar, updateCarStatus, setReferencecar,
     updateMainLinePosition, updateTestArea, updateWeeklySchedule,
-    highlightedCarIds, updateCarNotes,
+    highlightedCarIds, updateCarNotes, statusColors,
   } = useApp()
   const color = useCarColor(carId)
   const car = cars[carId]
   const isAdmin = userRole === 'admin'
+  const isInMaintenance = maintenanceUnits.some(u => u.car_ids.includes(carId))
 
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: draggableId ?? `car-${carId}`,
@@ -72,27 +73,25 @@ export function CarTag({ carId, draggableId, compact = false, noContextMenu = fa
 
   const handleMoveToStorage = async () => {
     setMenu(null)
-    // 依來源清除原槽位
-    if (car.location === 'main_line') {
-      const slot = mainLine.positions.indexOf(carId)
-      if (slot !== -1) await updateMainLinePosition(slot, null)
-    } else if (car.location === 'test_area') {
-      const fromArea = testAreas.find(a => a.slots.includes(carId))
-      if (fromArea) {
-        const newSlots = [...fromArea.slots] as (string | null)[]
-        const idx = newSlots.indexOf(carId)
-        if (idx !== -1) { newSlots[idx] = null; await updateTestArea(fromArea.id, { slots: newSlots }) }
-      }
-    } else if (car.location === 'weekly_schedule') {
-      // 清除該車廂在所有週排程天數中的全部出現（含重複），不用 break
-      for (const [day, slots] of Object.entries(weeklySchedule)) {
-        const daySlots = slots as (string | null)[]
-        if (daySlots.includes(carId)) {
-          const newSlots = daySlots.map(s => (s === carId ? null : s))
-          await updateWeeklySchedule(day, newSlots)
-        }
+    // 強制清除所有可能的槽位（不依賴 car.location，處理資料不一致情況）
+    const mlSlot = mainLine.positions.indexOf(carId)
+    if (mlSlot !== -1) await updateMainLinePosition(mlSlot, null)
+
+    const fromArea = testAreas.find(a => a.slots.includes(carId))
+    if (fromArea) {
+      const newSlots = [...fromArea.slots] as (string | null)[]
+      const idx = newSlots.indexOf(carId)
+      if (idx !== -1) { newSlots[idx] = null; await updateTestArea(fromArea.id, { slots: newSlots }) }
+    }
+
+    for (const [day, slots] of Object.entries(weeklySchedule)) {
+      const daySlots = slots as (string | null)[]
+      if (daySlots.includes(carId)) {
+        const newSlots = daySlots.map(s => (s === carId ? null : s))
+        await updateWeeklySchedule(day, newSlots)
       }
     }
+
     await moveCar(carId, 'zhuanjiaoer', undefined, car.location)
   }
 
@@ -136,6 +135,7 @@ export function CarTag({ carId, draggableId, compact = false, noContextMenu = fa
           color: textColor,
           opacity: isDragging ? 0.4 : 1,
           cursor: isAdmin ? 'grab' : 'default',
+          ...(isInMaintenance ? { boxShadow: `inset 0 0 0 5px ${statusColors.maintenance_needed}` } : {}),
         }}
         className={`
           relative inline-flex items-center justify-center rounded-sm font-bold select-none

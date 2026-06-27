@@ -20,7 +20,7 @@ interface AppState {
 }
 
 interface AppActions {
-  moveCar: (carId: string, toLocation: string, toSlot?: number, fromLocation?: string, fromSlot?: number) => Promise<void>
+  moveCar: (carId: string, toLocation: string, toSlot?: number, fromLocation?: string, fromSlot?: number) => Promise<boolean>
   updateCarStatus: (carId: string, status: Car['status']) => Promise<void>
   setReferencecar: (carId: string, isCurrentlyReference?: boolean) => Promise<void>
   updateMainLineMode: (mode: 108 | 130) => Promise<void>
@@ -203,13 +203,13 @@ export function AppProvider({ children, userRole, userEmail }: {
     toSlot?: number,
     fromLocation?: string,
     fromSlot?: number
-  ) => {
-    if (!isAdmin) return
+  ): Promise<boolean> => {
+    if (!isAdmin) return false
     const car = cars[carId]
-    if (!car) return
+    if (!car) return false
 
     // 報廢車不允許手動移動，須先改狀態
-    if (car.status === 'scrapped') return
+    if (car.status === 'scrapped') return false
 
     // 樂觀更新：立即更新本地 state
     setCars(prev => ({
@@ -228,10 +228,11 @@ export function AppProvider({ children, userRole, userEmail }: {
       // 失敗則回滾
       setCars(prev => ({ ...prev, [carId]: car }))
       console.error('moveCar 失敗:', error)
-      return
+      return false
     }
 
     logOperation('移動車廂', carId, fromLocation, toLocation, `格位 ${toSlot ?? '-'}`)
+    return true
   }, [cars, isAdmin, supabase, logOperation])
 
   const updateCarStatus = useCallback(async (carId: string, status: Car['status']) => {
@@ -528,17 +529,14 @@ export function useApp() {
   return ctx
 }
 
-// 取得車廂顏色（考慮維修排程覆蓋）
+// 取得車廂顏色（維修排程改用外框標示，不覆蓋底色）
 export function useCarColor(carId: string) {
-  const { cars, maintenanceUnits, statusColors } = useApp()
+  const { cars, statusColors } = useApp()
   const car = cars[carId]
   if (!car) return '#64748b'
 
-  const maintenanceCarIds = new Set(maintenanceUnits.flatMap(u => u.car_ids))
-
   if (car.status === 'scrapped') return statusColors.scrapped
   if (car.status === 'unavailable') return statusColors.unavailable
-  if (maintenanceCarIds.has(carId)) return statusColors.maintenance_needed
   if (car.status === 'controlled') return statusColors.controlled
   if (car.status === 'other') return statusColors.other
 
