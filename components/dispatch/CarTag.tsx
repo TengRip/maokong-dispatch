@@ -135,7 +135,7 @@ export function CarTag({ carId, draggableId, compact = false, noContextMenu = fa
           color: textColor,
           opacity: isDragging ? 0.4 : 1,
           cursor: isAdmin ? 'grab' : 'default',
-          ...(isInMaintenance ? { boxShadow: `inset 0 0 0 5px ${statusColors.maintenance_needed}` } : {}),
+          ...(isInMaintenance ? { boxShadow: `inset 0 0 0 8px ${statusColors.maintenance_needed}` } : {}),
         }}
         className={`
           relative inline-flex items-center justify-center rounded-sm font-bold select-none
