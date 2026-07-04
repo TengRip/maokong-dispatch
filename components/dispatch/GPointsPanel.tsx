@@ -80,9 +80,9 @@ export function GPointsPanel() {
       <button
         onClick={() => setOpen(true)}
         className="text-xs text-slate-300 hover:text-white bg-slate-600 hover:bg-slate-500 rounded px-2 py-1 transition-colors"
-        title="G 點校正"
+        title="車廂位置"
       >
-        📍 G點校正
+        📍 車廂位置
       </button>
 
       {open && (
@@ -91,7 +91,7 @@ export function GPointsPanel() {
 
             {/* Header */}
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
-              <h2 className="text-slate-800 font-bold">📍 G 點校正</h2>
+              <h2 className="text-slate-800 font-bold">📍 車廂位置</h2>
               <button onClick={() => setOpen(false)}
                 className="text-slate-400 hover:text-slate-700 text-xl leading-none">×</button>
             </div>
