@@ -355,22 +355,29 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
         const inBottom = idx >= seg.top + seg.right && idx < seg.top + seg.right + seg.bottom
         // 左右兩側（inRight / 剩下的 left 分支）改直排顯示，避免橫式長文字超出畫面被裁切
         const vertical = inRight || (!inTop && !inBottom)
-        const baseStyle: CSSProperties = {
+        // 圖示（📍）不套底色，只有文字部分維持灰底白字徽章
+        const iconStyle: CSSProperties = { fontSize: 13, lineHeight: 1 }
+        const textBadgeStyle: CSSProperties = vertical
+          ? { fontSize: 12, fontWeight: 700, color: '#ffffff', background: '#6b6f76', borderRadius: 4, padding: '3px 4px', lineHeight: '13px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }
+          : { fontSize: 12, fontWeight: 700, color: '#ffffff', background: '#6b6f76', borderRadius: 4, padding: '1px 5px', lineHeight: '17px', whiteSpace: 'nowrap' }
+        const containerStyle: CSSProperties = {
           position: 'absolute', zIndex: 9, pointerEvents: 'none',
-          fontSize: 12, fontWeight: 700, color: '#ffffff',
-          background: '#6b6f76', borderRadius: 4,
+          display: 'flex', alignItems: 'center', gap: 2,
+          ...(vertical ? { flexDirection: 'column' } : {}),
         }
-        const style: CSSProperties = vertical
-          ? { ...baseStyle, padding: '3px 4px', lineHeight: '13px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }
-          : { ...baseStyle, padding: '1px 5px', lineHeight: '17px', whiteSpace: 'nowrap' }
 
-        if (inTop) { style.left = x + sw / 2; style.top = y - 26; style.transform = 'translateX(-50%)' }
-        else if (inRight) { style.left = x + sw + 4; style.top = y + sh / 2; style.transform = 'translateY(-50%)' }
-        else if (inBottom) { style.left = x + sw / 2; style.top = y + sh + 4; style.transform = 'translateX(-50%)' }
-        else { style.left = x - 4; style.top = y + sh / 2; style.transform = 'translate(-100%, -50%)' }
+        if (inTop) { containerStyle.left = x + sw / 2; containerStyle.top = y - 26; containerStyle.transform = 'translateX(-50%)' }
+        else if (inRight) { containerStyle.left = x + sw + 4; containerStyle.top = y + sh / 2; containerStyle.transform = 'translateY(-50%)' }
+        else if (inBottom) { containerStyle.left = x + sw / 2; containerStyle.top = y + sh + 4; containerStyle.transform = 'translateX(-50%)' }
+        else { containerStyle.left = x - 4; containerStyle.top = y + sh / 2; containerStyle.transform = 'translate(-100%, -50%)' }
 
         if (!vertical) {
-          return <span key={p.key} style={style}>📍 {p.label}</span>
+          return (
+            <span key={p.key} style={containerStyle}>
+              <span style={iconStyle}>📍</span>
+              <span style={textBadgeStyle}>{p.label}</span>
+            </span>
+          )
         }
 
         // 直排格式：第一行 📍，接著「英文字母＋數字」（例如 G2），再來上/下、坡、側各佔一行
@@ -378,10 +385,12 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
         const prefix = match ? match[1] : p.label
         const suffix = match ? match[2] : ''
         return (
-          <div key={p.key} style={style}>
-            <span>📍</span>
-            <span>{prefix}</span>
-            {suffix.split('').map((ch, i) => <span key={i}>{ch}</span>)}
+          <div key={p.key} style={containerStyle}>
+            <span style={iconStyle}>📍</span>
+            <div style={textBadgeStyle}>
+              <span>{prefix}</span>
+              {suffix.split('').map((ch, i) => <span key={i}>{ch}</span>)}
+            </div>
           </div>
         )
       })}
