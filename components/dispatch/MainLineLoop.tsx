@@ -358,7 +358,7 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
         const baseStyle: CSSProperties = {
           position: 'absolute', zIndex: 9, pointerEvents: 'none',
           fontSize: 12, fontWeight: 700, color: '#f97316',
-          background: 'white', border: '1.5px solid #7c3aed', borderRadius: 4,
+          background: '#6b6f76', borderRadius: 4,
         }
         const style: CSSProperties = vertical
           ? { ...baseStyle, padding: '3px 4px', lineHeight: '13px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }
