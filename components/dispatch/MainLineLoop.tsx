@@ -277,7 +277,7 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
 
           {/* 左側去程箭頭 */}
           <div style={{ flexShrink: 0, width: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-            <span style={{ fontSize: 42, color: '#f97316', fontWeight: 900, lineHeight: 1 }}>↑</span>
+            <span style={{ fontSize: 42, color: '#f97316', fontWeight: 900, lineHeight: 1 }}>↓</span>
           </div>
 
           {/* 內容區（外框） */}
@@ -328,21 +328,21 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
 
           {/* 右側回程箭頭 */}
           <div style={{ flexShrink: 0, width: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
-            <span style={{ fontSize: 42, color: '#f97316', fontWeight: 900, lineHeight: 1 }}>↓</span>
+            <span style={{ fontSize: 42, color: '#f97316', fontWeight: 900, lineHeight: 1 }}>↑</span>
           </div>
 
         </div>
 
       </div>
 
-      {/* → 方向指示（上排，由左往右） */}
+      {/* ← 方向指示（上排，由右往左） */}
       <div style={{ position: 'absolute', left: xTopArrow - 20, top: rh + 4, pointerEvents: 'none', zIndex: 9 }}>
-        <span style={{ fontSize: 36, color: '#f97316', fontWeight: 900, lineHeight: 1 }}>→</span>
+        <span style={{ fontSize: 36, color: '#f97316', fontWeight: 900, lineHeight: 1 }}>←</span>
       </div>
 
-      {/* ← 方向指示（下排，由右往左） */}
+      {/* → 方向指示（下排，由左往右） */}
       <div style={{ position: 'absolute', left: xBotArrow - 20, bottom: rh + 4, pointerEvents: 'none', zIndex: 9 }}>
-        <span style={{ fontSize: 36, color: '#f97316', fontWeight: 900, lineHeight: 1 }}>←</span>
+        <span style={{ fontSize: 36, color: '#f97316', fontWeight: 900, lineHeight: 1 }}>→</span>
       </div>
 
       {/* G 點固定參考點標籤（疊在對應格子外側，純視覺標示，供對照支柱位置是否正確） */}
