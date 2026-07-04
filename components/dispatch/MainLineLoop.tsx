@@ -357,7 +357,7 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
         const vertical = inRight || (!inTop && !inBottom)
         const baseStyle: CSSProperties = {
           position: 'absolute', zIndex: 9, pointerEvents: 'none',
-          fontSize: 12, fontWeight: 700, color: '#38bdf8',
+          fontSize: 12, fontWeight: 700, color: '#ffffff',
           background: '#6b6f76', borderRadius: 4,
         }
         const style: CSSProperties = vertical
