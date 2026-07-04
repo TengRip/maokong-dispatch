@@ -370,15 +370,16 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
         else { style.left = x - 4; style.top = y + sh / 2; style.transform = 'translate(-100%, -50%)' }
 
         if (!vertical) {
-          return <span key={p.key} style={style}>{p.label}</span>
+          return <span key={p.key} style={style}>📍 {p.label}</span>
         }
 
-        // 直排格式：第一行「英文字母＋數字」（例如 G2），接著上/下、坡、側各佔一行
+        // 直排格式：第一行 📍，接著「英文字母＋數字」（例如 G2），再來上/下、坡、側各佔一行
         const match = p.label.match(/^([A-Za-z]+\d+)(.*)$/)
         const prefix = match ? match[1] : p.label
         const suffix = match ? match[2] : ''
         return (
           <div key={p.key} style={style}>
+            <span>📍</span>
             <span>{prefix}</span>
             {suffix.split('').map((ch, i) => <span key={i}>{ch}</span>)}
           </div>
