@@ -10,16 +10,16 @@ export interface GPoint {
 }
 
 export const G_POINTS: GPoint[] = [
-  { key: 'g4_down', label: 'G4下坡側', side: 'down',   index108: 0,  index130: null },
-  { key: 'g3_down', label: 'G3下坡側', side: 'down',   index108: 8,  index130: null },
-  { key: 'g2_down', label: 'G2下坡側', side: 'down',   index108: 14, index130: null },
-  { key: 'g1',      label: 'G1',       side: 'single', index108: 25, index130: null },
-  { key: 'g2_up',   label: 'G2上坡側', side: 'up',     index108: 36, index130: null },
-  { key: 'g3_up',   label: 'G3上坡側', side: 'up',     index108: 43, index130: null },
-  { key: 'g4_up',   label: 'G4上坡側', side: 'up',     index108: 51, index130: null },
-  { key: 'g5_up',   label: 'G5上坡側', side: 'up',     index108: 65, index130: null },
-  { key: 'g6',      label: 'G6',       side: 'single', index108: 80, index130: null },
-  { key: 'g5_down', label: 'G5下坡側', side: 'down',   index108: 95, index130: null },
+  { key: 'g4_down', label: 'G4下坡側', side: 'down',   index108: 0,   index130: null },
+  { key: 'g5_down', label: 'G5下坡側', side: 'down',   index108: 14,  index130: null },
+  { key: 'g6',      label: 'G6',       side: 'single', index108: 29,  index130: null },
+  { key: 'g5_up',   label: 'G5上坡側', side: 'up',     index108: 44,  index130: null },
+  { key: 'g4_up',   label: 'G4上坡側', side: 'up',     index108: 57,  index130: null },
+  { key: 'g3_up',   label: 'G3上坡側', side: 'up',     index108: 65,  index130: null },
+  { key: 'g2_up',   label: 'G2上坡側', side: 'up',     index108: 73,  index130: null },
+  { key: 'g1',      label: 'G1',       side: 'single', index108: 83,  index130: null },
+  { key: 'g2_down', label: 'G2下坡側', side: 'down',   index108: 94,  index130: null },
+  { key: 'g3_down', label: 'G3下坡側', side: 'down',   index108: 100, index130: null },
 ]
 
 export function getGPointIndex(point: GPoint, mode: 108 | 130): number | null {
