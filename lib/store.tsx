@@ -25,6 +25,7 @@ interface AppActions {
   setReferencecar: (carId: string, isCurrentlyReference?: boolean) => Promise<void>
   updateMainLineMode: (mode: 108 | 130) => Promise<void>
   updateMainLinePosition: (index: number, carId: string | null) => Promise<void>
+  recalibrateMainLine: (targetIndex: number, carId: string) => Promise<boolean>
   extractCarsFrom130To108: (startCarId: string, count: number) => Promise<void>
   switchDirectlyTo108: () => Promise<void>
   updateTestArea: (areaId: number, updates: Partial<TestArea>) => Promise<void>
@@ -75,7 +76,8 @@ export function AppProvider({ children, userRole, userEmail }: {
   // 初始化載入資料
   useEffect(() => {
     loadAllData()
-    setupRealtime()
+    const cleanupRealtime = setupRealtime()
+    return cleanupRealtime
   }, [])
 
   async function loadAllData() {
@@ -356,6 +358,38 @@ export function AppProvider({ children, userRole, userEmail }: {
     }
   }, [isAdmin, mainLine.positions, supabase])
 
+  // 校正正線起點：找出 carId 目前所在 index，環形位移整個陣列，讓它落到 targetIndex，其餘車廂相對順序與間距不變
+  const recalibrateMainLine = useCallback(async (targetIndex: number, carId: string): Promise<boolean> => {
+    if (!isAdmin) return false
+    const positions = mainLine.positions
+    const curIdx = positions.indexOf(carId)
+    if (curIdx === -1) return false
+
+    const length = positions.length
+    const shift = ((targetIndex - curIdx) % length + length) % length
+    if (shift === 0) return true
+
+    const newPositions: (string | null)[] = new Array(length).fill(null)
+    positions.forEach((cid, i) => { if (cid) newPositions[(i + shift) % length] = cid })
+
+    const prevPositions = positions
+    setMainLine(prev => ({ ...prev, positions: newPositions }))
+
+    const { error } = await supabase.from('main_line').update({
+      positions: newPositions,
+      updated_at: new Date().toISOString(),
+    }).eq('id', 1)
+
+    if (error) {
+      setMainLine(prev => ({ ...prev, positions: prevPositions }))
+      console.error('recalibrateMainLine 失敗:', error)
+      return false
+    }
+
+    await logOperation('校正正線起點', carId, undefined, undefined, `目標格 ${targetIndex + 1}，位移 ${shift} 格`)
+    return true
+  }, [isAdmin, mainLine.positions, supabase, logOperation])
+
   const extractCarsFrom130To108 = useCallback(async (startCarId: string, count: number) => {
     if (!isAdmin) return
     const positions = [...mainLine.positions]
@@ -513,7 +547,7 @@ export function AppProvider({ children, userRole, userEmail }: {
       cars, mainLine, testAreas, maintenanceUnits, weeklySchedule, statusColors,
       showMaintenancePanel, visibleTestAreas, bulletin, userRole, userEmail, highlightedCarIds,
       moveCar, updateCarStatus, setReferencecar, updateMainLineMode,
-      updateMainLinePosition, extractCarsFrom130To108, switchDirectlyTo108,
+      updateMainLinePosition, recalibrateMainLine, extractCarsFrom130To108, switchDirectlyTo108,
       updateTestArea, updateMaintenanceUnit, updateWeeklySchedule,
       setShowMaintenancePanel, setVisibleTestAreas, setHighlightedCarIds,
       updateBulletin, saveSnapshot, logOperation, updateCarNotes, applyStatusColors,

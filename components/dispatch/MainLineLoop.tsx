@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, type CSSProperties } from 'react'
 import { useDroppable } from '@dnd-kit/core'
 import { useApp } from '@/lib/store'
 import { getCarOccupiedLabel } from '@/lib/utils'
@@ -9,6 +9,7 @@ import { WeeklySchedulePanel } from './WeeklySchedulePanel'
 import { MaintenancePanel } from './MaintenancePanel'
 import { TestAreaPanel } from './TestAreaPanel'
 import { BulletinBoard } from './BulletinBoard'
+import { G_POINTS, getGPointIndex } from '@/lib/gPoints'
 
 const GAP = 1
 
@@ -16,8 +17,8 @@ const GAP = 1
 const REF_W = 1469
 const REF_H = 782
 
-// 週排程欄固定寬度（5天 × 48px + 4間距 × 8px + 左右 padding 24px）
-const WEEKLY_COL_W = 296
+// 週排程欄固定寬度（5天 × 48px + 4間距 × 8px + 左右 padding 24px + 右框線 2px + 垂直捲軸緩衝 18px）
+const WEEKLY_COL_W = 316
 
 function getSegments(mode: 108 | 130) {
   return mode === 108
@@ -29,6 +30,30 @@ function getSlotSize(top: number, side: number) {
   const sw = (REF_W - (top + 1) * GAP) / (top + 2)
   const sh = (REF_H - (side + 1) * GAP) / (side + 2)
   return { sw, sh, rw: sw + GAP, rh: sh + GAP }
+}
+
+// 依 index 算出格子左上角座標，邏輯需與四段的渲染方式（含 bottom/left 的 reverse 顯示順序）一致
+function getSlotXY(
+  index: number,
+  seg: { top: number; right: number; bottom: number; left: number },
+  rw: number, rh: number, sw: number, sh: number
+) {
+  const { top, right, bottom } = seg
+  if (index < top) {
+    return { x: rw + index * rw, y: 0 }
+  }
+  if (index < top + right) {
+    const d = index - top
+    return { x: REF_W - sw, y: rh + d * rh }
+  }
+  if (index < top + right + bottom) {
+    const d = index - (top + right)
+    const dPos = (bottom - 1) - d
+    return { x: rw + dPos * rw, y: REF_H - sh }
+  }
+  const d = index - (top + right + bottom)
+  const dPos = (seg.left - 1) - d
+  return { x: 0, y: rh + dPos * rh }
 }
 
 function LoopSlot({ index, carId, onWarn, sw, sh }: {
@@ -311,6 +336,46 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
       <div style={{ position: 'absolute', left: xBotArrow - 20, bottom: rh + 4, pointerEvents: 'none', zIndex: 9 }}>
         <span style={{ fontSize: 36, color: '#f97316', fontWeight: 900, lineHeight: 1 }}>←</span>
       </div>
+
+      {/* G 點固定參考點標籤（疊在對應格子外側，純視覺標示，供對照支柱位置是否正確） */}
+      {G_POINTS.map(p => {
+        const idx = getGPointIndex(p, mode)
+        if (idx === null || idx >= mode) return null
+        const { x, y } = getSlotXY(idx, seg, rw, rh, sw, sh)
+        const inTop = idx < seg.top
+        const inRight = idx >= seg.top && idx < seg.top + seg.right
+        const inBottom = idx >= seg.top + seg.right && idx < seg.top + seg.right + seg.bottom
+        // 左右兩側（inRight / 剩下的 left 分支）改直排顯示，避免橫式長文字超出畫面被裁切
+        const vertical = inRight || (!inTop && !inBottom)
+        const baseStyle: CSSProperties = {
+          position: 'absolute', zIndex: 9, pointerEvents: 'none',
+          fontSize: 12, fontWeight: 700, color: '#7c3aed',
+          background: 'white', border: '1.5px solid #7c3aed', borderRadius: 4,
+        }
+        const style: CSSProperties = vertical
+          ? { ...baseStyle, padding: '3px 4px', lineHeight: '13px', textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }
+          : { ...baseStyle, padding: '1px 5px', lineHeight: '17px', whiteSpace: 'nowrap' }
+
+        if (inTop) { style.left = x + sw / 2; style.top = y - 26; style.transform = 'translateX(-50%)' }
+        else if (inRight) { style.left = x + sw + 4; style.top = y + sh / 2; style.transform = 'translateY(-50%)' }
+        else if (inBottom) { style.left = x + sw / 2; style.top = y + sh + 4; style.transform = 'translateX(-50%)' }
+        else { style.left = x - 4; style.top = y + sh / 2; style.transform = 'translate(-100%, -50%)' }
+
+        if (!vertical) {
+          return <span key={p.key} style={style}>{p.label}</span>
+        }
+
+        // 直排格式：第一行「英文字母＋數字」（例如 G2），接著上/下、坡、側各佔一行
+        const match = p.label.match(/^([A-Za-z]+\d+)(.*)$/)
+        const prefix = match ? match[1] : p.label
+        const suffix = match ? match[2] : ''
+        return (
+          <div key={p.key} style={style}>
+            <span>{prefix}</span>
+            {suffix.split('').map((ch, i) => <span key={i}>{ch}</span>)}
+          </div>
+        )
+      })}
 
       {/* 警告 Modal */}
       {warnMsg && (

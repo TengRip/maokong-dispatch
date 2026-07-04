@@ -114,6 +114,8 @@ export function MainLayout() {
 
       {/* 中央：正線迴圈，依容器高寬自動縮放 */}
       <div ref={centerRef} className="flex-1 flex items-start justify-start p-4 overflow-auto bg-slate-100">
+        {/* 固定留白，只為了讓左側 G5 標籤有伸展空間，不影響 centerRef 量測到的可用寬度（不會動到迴圈縮放比例） */}
+        <div style={{ width: 20, flexShrink: 0 }} />
         <MainLineLoop availableHeight={centerSize.height} availableWidth={centerSize.width} />
       </div>
 

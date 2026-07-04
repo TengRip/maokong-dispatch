@@ -30,7 +30,7 @@ function WeeklySlot({ day, index, carId, onWarn }: {
     if (input === null) return
     const val = input.trim().toUpperCase() || null
     const existing = weeklySchedule[day] ?? []
-    const slots = Array.from({ length: 14 }, (_, i) => existing[i] ?? null) as (string | null)[]
+    const slots = Array.from({ length: 12 }, (_, i) => existing[i] ?? null) as (string | null)[]
 
     if (!val) {
       // 清空：把原本的車歸回儲車區
@@ -83,7 +83,7 @@ export function WeeklySchedulePanel() {
       <div className="text-slate-600 text-base font-semibold mb-2">週排程區（已收G4）</div>
       <div className="flex gap-2 overflow-x-auto pb-1">
         {DAYS.map(({ key, label }) => {
-          const slots: (string | null)[] = Array.from({ length: 14 }, (_, i) => (weeklySchedule[key] ?? [])[i] ?? null)
+          const slots: (string | null)[] = Array.from({ length: 12 }, (_, i) => (weeklySchedule[key] ?? [])[i] ?? null)
           return (
             <div key={key} className="flex-shrink-0">
               <div className="text-slate-500 text-xs text-center mb-1 font-semibold">週{label}</div>

@@ -8,6 +8,7 @@ import { SettingsPanel } from './SettingsPanel'
 import { DiagnosticsPanel } from './DiagnosticsPanel'
 import { NotesPanel } from './NotesPanel'
 import { SnapshotPanel } from './SnapshotPanel'
+import { GPointsPanel } from './GPointsPanel'
 import * as XLSX from 'xlsx'
 
 export function TopBar() {
@@ -311,6 +312,7 @@ export function TopBar() {
       <div className="flex items-center gap-2 ml-2">
         <NotesPanel />
         <SnapshotPanel />
+        <GPointsPanel />
         <DiagnosticsPanel />
         <SettingsPanel />
         <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${isAdmin ? 'bg-blue-500 text-white' : 'bg-slate-500 text-slate-200'}`}>
