@@ -20,6 +20,9 @@ const REF_H = 782
 // 週排程欄固定寬度（5天 × 48px + 4間距 × 8px + 左右 padding 24px + 右框線 2px + 垂直捲軸緩衝 18px）
 const WEEKLY_COL_W = 316
 
+// G 點標籤（尤其側邊直排的多行標籤）會探出方框外側，四周留這圈緩衝空間避免被容器裁切
+const MARGIN = 70
+
 function getSegments(mode: 108 | 130) {
   return mode === 108
     ? { top: 33, right: 21, bottom: 33, left: 21 }
@@ -185,11 +188,13 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
   }
 
   return (
-    <div style={{ width: REF_W * scale, height: REF_H * scale, flexShrink: 0 }}>
+    <div style={{ width: (REF_W + MARGIN * 2) * scale, height: (REF_H + MARGIN * 2) * scale, flexShrink: 0 }}>
     <div className="select-none" style={{
-      position: 'relative', width: REF_W, height: REF_H,
+      position: 'relative', width: REF_W + MARGIN * 2, height: REF_H + MARGIN * 2,
       transform: `scale(${scale})`, transformOrigin: 'top left',
     }}>
+    {/* 內層固定 REF_W×REF_H，外圍留 MARGIN 緩衝空間讓 G 點標籤探出方框也不被裁切 */}
+    <div style={{ position: 'absolute', left: MARGIN, top: MARGIN, width: REF_W, height: REF_H }}>
 
       {/* 外框 SVG */}
       <svg style={{ position: 'absolute', inset: 0, width: REF_W, height: REF_H, overflow: 'visible', pointerEvents: 'none' }}>
@@ -414,6 +419,7 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
         </div>
       )}
 
+    </div>
     </div>
     </div>
   )
