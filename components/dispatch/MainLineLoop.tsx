@@ -20,8 +20,10 @@ const REF_H = 782
 // 週排程欄固定寬度（5天 × 48px + 4間距 × 8px + 左右 padding 24px + 右框線 2px + 垂直捲軸緩衝 18px）
 const WEEKLY_COL_W = 316
 
-// G 點標籤（尤其側邊直排的多行標籤）會探出方框外側，四周留這圈緩衝空間避免被容器裁切
-const MARGIN = 70
+// G 點標籤會探出方框外側，四周留緩衝空間避免被裁切；上下標籤是橫排單行、左右標籤是直排多行文字更寬，
+// 故上下/左右所需緩衝不同，取剛好夠用的最小值，避免留白過多導致縮放比例變小、被迫捲動才能看到完整迴圈
+const MARGIN_Y = 30
+const MARGIN_X = 34
 
 function getSegments(mode: 108 | 130) {
   return mode === 108
@@ -137,10 +139,11 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
 
   const { sw, sh, rw, rh } = getSlotSize(seg.top, seg.right)
 
+  // 縮放比例需以「含緩衝空間」的總尺寸去算，緩衝空間才會一起被縮小，避免撐爆可視範圍要捲動
   const scale = (availableHeight > 0 && availableWidth > 0)
     ? Math.max(0.5, Math.min(
-        (availableHeight - 16) / REF_H,
-        (availableWidth - 16) / REF_W
+        (availableHeight - 16) / (REF_H + MARGIN_Y * 2),
+        (availableWidth - 16) / (REF_W + MARGIN_X * 2)
       ))
     : 1
 
@@ -188,13 +191,13 @@ export function MainLineLoop({ availableHeight, availableWidth }: MainLineLoopPr
   }
 
   return (
-    <div style={{ width: (REF_W + MARGIN * 2) * scale, height: (REF_H + MARGIN * 2) * scale, flexShrink: 0 }}>
+    <div style={{ width: (REF_W + MARGIN_X * 2) * scale, height: (REF_H + MARGIN_Y * 2) * scale, flexShrink: 0 }}>
     <div className="select-none" style={{
-      position: 'relative', width: REF_W + MARGIN * 2, height: REF_H + MARGIN * 2,
+      position: 'relative', width: REF_W + MARGIN_X * 2, height: REF_H + MARGIN_Y * 2,
       transform: `scale(${scale})`, transformOrigin: 'top left',
     }}>
-    {/* 內層固定 REF_W×REF_H，外圍留 MARGIN 緩衝空間讓 G 點標籤探出方框也不被裁切 */}
-    <div style={{ position: 'absolute', left: MARGIN, top: MARGIN, width: REF_W, height: REF_H }}>
+    {/* 內層固定 REF_W×REF_H，外圍留緩衝空間讓 G 點標籤探出方框也不被裁切 */}
+    <div style={{ position: 'absolute', left: MARGIN_X, top: MARGIN_Y, width: REF_W, height: REF_H }}>
 
       {/* 外框 SVG */}
       <svg style={{ position: 'absolute', inset: 0, width: REF_W, height: REF_H, overflow: 'visible', pointerEvents: 'none' }}>
