@@ -97,10 +97,6 @@ export function GPointsPanel() {
             </div>
 
             <div className="flex-1 overflow-y-auto p-5 space-y-6">
-              <p className="text-slate-500 text-xs">
-                控制員回報車廂經過某支柱位置的車號後，點擊對應格子輸入，系統會自動環形位移整條正線校正偏移。
-              </p>
-
               <div className="flex items-start gap-4">
                 <span className="text-xs text-slate-400 w-12 flex-shrink-0 pt-3">上坡側</span>
                 <div className="flex flex-wrap gap-4">
