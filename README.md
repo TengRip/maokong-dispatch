@@ -16,6 +16,15 @@
 | 樣式 | Tailwind CSS + shadcn/ui |
 | 拖曳 | dnd-kit |
 
+**⚠️ 部署注意事項：本專案未接 GitHub 自動部署！**
+`git push` 只會把程式碼更新到 GitHub，不會讓線上網址跟著更新。每次改完程式碼、commit + push 之後，一定要另外手動執行：
+
+```
+vercel --prod
+```
+
+才會真正部署到 https://maokong-dispatch.vercel.app 。（2026-06-03 之後曾發生過連續 6 次 commit 都忘記部署，線上版本停留一個月沒更新的狀況，之後務必養成習慣。）
+
 ---
 
 ## 帳號與權限
