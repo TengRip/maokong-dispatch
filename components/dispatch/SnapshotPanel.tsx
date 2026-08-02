@@ -28,6 +28,7 @@ export function SnapshotPanel() {
   const [loading, setLoading] = useState(false)
   const [previewId, setPreviewId] = useState<string | null>(null)
   const [restoreTarget, setRestoreTarget] = useState<SnapshotRow | null>(null)
+  const [restoreStep, setRestoreStep] = useState<1 | 2>(1)
   const [password, setPassword] = useState('')
   const [restoring, setRestoring] = useState(false)
   const [restoreError, setRestoreError] = useState('')
@@ -68,12 +69,12 @@ export function SnapshotPanel() {
     loadSnapshots()
   }
 
-  const handleRestore = async () => {
-    if (!restoreTarget || !password) return
+  // 第一步：驗證登入密碼，通過後進入第二步的純點擊二次確認
+  const handleVerifyPassword = async () => {
+    if (!restoreTarget || restoreTarget.id !== latestSnapshotId || !password) return
     setRestoring(true)
     setRestoreError('')
 
-    // 用登入密碼驗證身份
     const { error: authError } = await supabase.auth.signInWithPassword({
       email: userEmail,
       password,
@@ -83,6 +84,16 @@ export function SnapshotPanel() {
       setRestoring(false)
       return
     }
+
+    setRestoring(false)
+    setRestoreStep(2)
+  }
+
+  // 第二步：純點擊確認，正式執行還原
+  const handleRestore = async () => {
+    if (!restoreTarget || restoreTarget.id !== latestSnapshotId) return
+    setRestoring(true)
+    setRestoreError('')
 
     const snap = restoreTarget
     const now = new Date().toISOString()
@@ -129,11 +140,11 @@ export function SnapshotPanel() {
       days.forEach(d => { if (d in snap.weekly_data) wsUpdate[d] = snap.weekly_data[d] })
       await supabase.from('weekly_schedule').update(wsUpdate).eq('id', 1)
 
-      // 寫入操作日誌
+      // 寫入操作日誌（含快照建立時間，方便日後排查）
       await supabase.from('operation_logs').insert({
         user_email: userEmail,
         action: '還原快照',
-        detail: snap.label,
+        detail: `${snap.label}（快照建立於 ${new Date(snap.created_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}）`,
       })
 
       setRestoreSuccess(true)
@@ -154,6 +165,9 @@ export function SnapshotPanel() {
     setDeleting(false)
     setDeleteTarget(null)
   }
+
+  // 快照依 created_at 降冪排序載入，第一筆即為最新一期
+  const latestSnapshotId = snapshots[0]?.id
 
   // 依台北日期分組
   const grouped = snapshots.reduce<Record<string, SnapshotRow[]>>((acc, s) => {
@@ -258,8 +272,10 @@ export function SnapshotPanel() {
                               {isPreviewing ? '收起' : '預覽'}
                             </button>
                             <button
-                              onClick={() => { setRestoreTarget(snap); setPassword(''); setRestoreError(''); setRestoreSuccess(false) }}
-                              className="flex-1 text-xs bg-orange-500 hover:bg-orange-600 text-white rounded px-2 py-1"
+                              onClick={() => { if (snap.id === latestSnapshotId) { setRestoreTarget(snap); setRestoreStep(1); setPassword(''); setRestoreError(''); setRestoreSuccess(false) } }}
+                              disabled={snap.id !== latestSnapshotId}
+                              title={snap.id !== latestSnapshotId ? '僅能還原最新一期快照，避免誤還原到過舊資料' : undefined}
+                              className="flex-1 text-xs bg-orange-500 hover:bg-orange-600 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white rounded px-2 py-1"
                             >
                               還原
                             </button>
@@ -311,46 +327,76 @@ export function SnapshotPanel() {
         </div>
       )}
 
-      {/* 密碼確認 Dialog */}
+      {/* 還原確認 Dialog（僅限最新一期快照）：第一步密碼驗證，第二步純點擊二次確認 */}
       {restoreTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/40" onClick={() => { if (!restoring) { setRestoreTarget(null); setPassword('') } }} />
+          <div className="absolute inset-0 bg-black/40" onClick={() => { if (!restoring) { setRestoreTarget(null); setRestoreStep(1); setPassword('') } }} />
           <div className="relative z-50 bg-white rounded-xl p-6 w-80 shadow-2xl border border-slate-200">
             <div className="text-3xl mb-2 text-center">⚠️</div>
             <h3 className="font-bold text-slate-800 text-center mb-1">還原「{restoreTarget.label}」</h3>
-            <p className="text-slate-500 text-sm text-center mb-4">
-              這會覆蓋目前所有排班資料。<br />請輸入您的登入密碼以確認操作。
+            <p className="text-slate-500 text-sm text-center mb-1">
+              快照建立於 {new Date(restoreTarget.created_at).toLocaleString('zh-TW', { timeZone: 'Asia/Taipei' })}
             </p>
-            <input
-              autoFocus
-              type="password"
-              value={password}
-              onChange={e => { setPassword(e.target.value); setRestoreError('') }}
-              onKeyDown={e => { if (e.key === 'Enter') handleRestore() }}
-              placeholder="登入密碼"
-              disabled={restoring || restoreSuccess}
-              className="w-full bg-slate-50 border border-slate-300 rounded px-3 py-2 text-slate-800 text-sm mb-2 outline-none focus:border-orange-400 disabled:opacity-50"
-            />
-            {restoreError && (
-              <p className="text-red-500 text-xs mb-2 text-center">{restoreError}</p>
+
+            {restoreStep === 1 && (
+              <>
+                <p className="text-slate-500 text-sm text-center mb-4">
+                  這會覆蓋目前畫面上所有排班資料。<br />請輸入您的登入密碼以確認操作。
+                </p>
+                <input
+                  autoFocus
+                  type="password"
+                  value={password}
+                  onChange={e => { setPassword(e.target.value); setRestoreError('') }}
+                  onKeyDown={e => { if (e.key === 'Enter') handleVerifyPassword() }}
+                  placeholder="登入密碼"
+                  disabled={restoring}
+                  className="w-full bg-slate-50 border border-slate-300 rounded px-3 py-2 text-slate-800 text-sm mb-2 outline-none focus:border-orange-400 disabled:opacity-50"
+                />
+                {restoreError && (
+                  <p className="text-red-500 text-xs mb-2 text-center">{restoreError}</p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setRestoreTarget(null); setRestoreStep(1); setPassword('') }}
+                    disabled={restoring}
+                    className="flex-1 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 rounded px-3 py-2 text-sm"
+                  >取消</button>
+                  <button
+                    onClick={handleVerifyPassword}
+                    disabled={restoring || !password}
+                    className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded px-3 py-2 text-sm font-medium"
+                  >
+                    {restoring ? '驗證中…' : '下一步'}
+                  </button>
+                </div>
+              </>
             )}
-            {restoreSuccess && (
-              <p className="text-green-600 text-xs mb-2 text-center font-medium">還原成功，即將重新載入…</p>
+
+            {restoreStep === 2 && (
+              <>
+                <p className="text-red-600 text-sm text-center mb-4 font-medium">
+                  密碼驗證通過。請再次確認：這是最後一步，點擊後立即覆蓋現有資料，無法復原。
+                </p>
+                {restoreSuccess && (
+                  <p className="text-green-600 text-xs mb-2 text-center font-medium">還原成功，即將重新載入…</p>
+                )}
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => { setRestoreTarget(null); setRestoreStep(1); setPassword('') }}
+                    disabled={restoring || restoreSuccess}
+                    className="flex-1 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 rounded px-3 py-2 text-sm"
+                  >取消</button>
+                  <button
+                    onClick={handleRestore}
+                    disabled={restoring || restoreSuccess}
+                    className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white rounded px-3 py-2 text-sm font-medium"
+                  >
+                    {restoring ? '還原中…' : '確認還原'}
+                  </button>
+                </div>
+              </>
             )}
-            <div className="flex gap-2">
-              <button
-                onClick={() => { setRestoreTarget(null); setPassword(''); setRestoreError('') }}
-                disabled={restoring || restoreSuccess}
-                className="flex-1 bg-slate-100 hover:bg-slate-200 disabled:opacity-50 text-slate-700 rounded px-3 py-2 text-sm"
-              >取消</button>
-              <button
-                onClick={handleRestore}
-                disabled={restoring || restoreSuccess || !password}
-                className="flex-1 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 text-white rounded px-3 py-2 text-sm font-medium"
-              >
-                {restoring ? '驗證中…' : '確認還原'}
-              </button>
-            </div>
           </div>
         </div>
       )}
