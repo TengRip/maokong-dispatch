@@ -71,7 +71,7 @@ export function SnapshotPanel() {
 
   // 第一步：驗證登入密碼，通過後進入第二步的純點擊二次確認
   const handleVerifyPassword = async () => {
-    if (!restoreTarget || restoreTarget.id !== latestSnapshotId || !password) return
+    if (!restoreTarget || !password) return
     setRestoring(true)
     setRestoreError('')
 
@@ -91,7 +91,7 @@ export function SnapshotPanel() {
 
   // 第二步：純點擊確認，正式執行還原
   const handleRestore = async () => {
-    if (!restoreTarget || restoreTarget.id !== latestSnapshotId) return
+    if (!restoreTarget) return
     setRestoring(true)
     setRestoreError('')
 
@@ -165,9 +165,6 @@ export function SnapshotPanel() {
     setDeleting(false)
     setDeleteTarget(null)
   }
-
-  // 快照依 created_at 降冪排序載入，第一筆即為最新一期
-  const latestSnapshotId = snapshots[0]?.id
 
   // 依台北日期分組
   const grouped = snapshots.reduce<Record<string, SnapshotRow[]>>((acc, s) => {
@@ -272,10 +269,8 @@ export function SnapshotPanel() {
                               {isPreviewing ? '收起' : '預覽'}
                             </button>
                             <button
-                              onClick={() => { if (snap.id === latestSnapshotId) { setRestoreTarget(snap); setRestoreStep(1); setPassword(''); setRestoreError(''); setRestoreSuccess(false) } }}
-                              disabled={snap.id !== latestSnapshotId}
-                              title={snap.id !== latestSnapshotId ? '僅能還原最新一期快照，避免誤還原到過舊資料' : undefined}
-                              className="flex-1 text-xs bg-orange-500 hover:bg-orange-600 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed text-white rounded px-2 py-1"
+                              onClick={() => { setRestoreTarget(snap); setRestoreStep(1); setPassword(''); setRestoreError(''); setRestoreSuccess(false) }}
+                              className="flex-1 text-xs bg-orange-500 hover:bg-orange-600 text-white rounded px-2 py-1"
                             >
                               還原
                             </button>
@@ -327,7 +322,7 @@ export function SnapshotPanel() {
         </div>
       )}
 
-      {/* 還原確認 Dialog（僅限最新一期快照）：第一步密碼驗證，第二步純點擊二次確認 */}
+      {/* 還原確認 Dialog：第一步密碼驗證，第二步純點擊二次確認 */}
       {restoreTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div className="absolute inset-0 bg-black/40" onClick={() => { if (!restoring) { setRestoreTarget(null); setRestoreStep(1); setPassword('') } }} />
